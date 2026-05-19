@@ -20,12 +20,12 @@ export default async function PartyReportsPage() {
   const parties = await (async () => {
     if (!isSupabaseReady()) return mockParties
     const supabase = createClient()
-    const { data = [] } = await supabase
+    const { data } = await supabase
       .from("parties")
       .select("id, name, type, created_at")
       .eq("user_id", currentUser.effectiveUserId)
       .order("name", { ascending: true })
-    return data
+    return data ?? []
   })()
 
   const balances = await getPartyBalances()
