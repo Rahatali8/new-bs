@@ -4,9 +4,9 @@
 const bcrypt = require('bcryptjs');
 
 async function createAdminUser() {
-  const email = 'admin@example.com';
-  const password = 'admin123'; // Change this to your desired password
-  const name = 'Admin User';
+  const email = 'rahatalisheikh45@gmail.com';   // <<< apna email yahan
+  const password = 'Password@123';    // <<< apna password yahan
+  const name = 'Rahat Ali';           // <<< apna naam yahan
 
   // Hash the password
   const passwordHash = await bcrypt.hash(password, 10);

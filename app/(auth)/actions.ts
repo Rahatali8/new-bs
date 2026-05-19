@@ -39,7 +39,7 @@ export async function signIn(formData: FormData) {
     user = await authenticateUser(email, password)
   } catch (err) {
     console.error("authenticateUser error:", err)
-    return { error: "Login service unavailable. Check server configuration." }
+    return { error: `Debug: ${err instanceof Error ? err.message : String(err)}` }
   }
 
   if (!user) {
