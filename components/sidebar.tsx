@@ -94,6 +94,18 @@ export function Sidebar({ user }: SidebarProps) {
     (): NavItem[] => [
       { href: "/dashboard", label: "Dashboard", icon: BarChart3, privilege: "dashboard" as ModulePrivilege },
       {
+        href: "/pos",
+        label: "POS",
+        icon: ShoppingCart,
+        privilege: "pos" as ModulePrivilege,
+        children: [
+          { href: "/pos", label: "New Sale", icon: ShoppingCart, privilege: "pos" as ModulePrivilege },
+          { href: "/pos/sales", label: "Sales", icon: Receipt, privilege: "pos" as ModulePrivilege },
+          { href: "/pos/payments", label: "Customer Payments", icon: CreditCard, privilege: "pos" as ModulePrivilege },
+          { href: "/pos/reports", label: "Gross Profit", icon: TrendingUp, privilege: "pos" as ModulePrivilege },
+        ],
+      },
+      {
         href: "/parties",
         label: "Parties",
         icon: Users,
@@ -108,25 +120,13 @@ export function Sidebar({ user }: SidebarProps) {
         href: "/stock-management",
         label: "Stock Management",
         icon: Warehouse,
-        privilege: "inventory" as ModulePrivilege, // Use inventory as parent privilege check
+        privilege: "inventory" as ModulePrivilege,
         children: [
           { href: "/stock-management/inventory", label: "Inventory", icon: Package, privilege: "inventory" as ModulePrivilege },
           { href: "/stock-management/reports", label: "Inventory Report", icon: FileTextIcon, privilege: "inventory_report" as ModulePrivilege },
           { href: "/stock-management/categories", label: "Categories", icon: Tags, privilege: "categories" as ModulePrivilege },
           { href: "/stock-management/units", label: "Units", icon: Ruler, privilege: "units" as ModulePrivilege },
           { href: "/stock-management/barcode", label: "Barcode", icon: ScanLine, privilege: "barcode" as ModulePrivilege },
-        ],
-      },
-      {
-        href: "/pos",
-        label: "POS",
-        icon: ShoppingCart,
-        privilege: "pos" as ModulePrivilege,
-        children: [
-          { href: "/pos", label: "New Sale", icon: ShoppingCart, privilege: "pos" as ModulePrivilege },
-          { href: "/pos/sales", label: "Sales", icon: Receipt, privilege: "pos" as ModulePrivilege },
-          { href: "/pos/payments", label: "Customer Payments", icon: CreditCard, privilege: "pos" as ModulePrivilege },
-          { href: "/pos/reports", label: "Gross Profit", icon: TrendingUp, privilege: "pos" as ModulePrivilege },
         ],
       },
       { href: "/cash-book", label: "Cash Book", icon: BookCheck, privilege: "accounts" as ModulePrivilege },

@@ -109,7 +109,7 @@ export function BarcodeScanToPOS() {
       }
 
       // Track single character keys (not modifier combos)
-      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      if (e.key && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
         const elapsed = now - lastKeyTimeRef.current
 
         if (elapsed > 300) {
