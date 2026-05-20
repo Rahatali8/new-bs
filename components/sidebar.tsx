@@ -21,73 +21,30 @@ interface NavItem {
   children?: NavItem[]
 }
 
+function getOpenSection(path: string): string | null {
+  if (path.startsWith("/pos")) return "/pos"
+  if (path.startsWith("/parties")) return "/parties"
+  if (path.startsWith("/stock-management")) return "/stock-management"
+  if (path.startsWith("/purchase-management")) return "/purchase-management"
+  if (path.startsWith("/accounts-management")) return "/accounts-management"
+  if (path.startsWith("/returns")) return "/returns"
+  if (path.startsWith("/employee-management")) return "/employee-management"
+  if (path.startsWith("/users") || path.startsWith("/backup") || path.startsWith("/settings")) return "/settings-group"
+  return null
+}
+
 export function Sidebar({ user }: SidebarProps) {
   const [open, setOpen] = useState(false)
-  const [stockManagementOpen, setStockManagementOpen] = useState(false)
-  const [posOpen, setPosOpen] = useState(false)
-  const [purchaseManagementOpen, setPurchaseManagementOpen] = useState(false)
-  const [partiesOpen, setPartiesOpen] = useState(false)
-  const [accountsManagementOpen, setAccountsManagementOpen] = useState(false)
-  const [returnsOpen, setReturnsOpen] = useState(false)
-  const [employeeManagementOpen, setEmployeeManagementOpen] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false)
   const pathname = usePathname()
+  const [openSection, setOpenSection] = useState<string | null>(() => getOpenSection(pathname))
 
-  // Check if any stock management sub-module is active
   useEffect(() => {
-    if (pathname.startsWith("/stock-management")) {
-      setStockManagementOpen(true)
-    }
+    setOpenSection(getOpenSection(pathname))
   }, [pathname])
 
-  // Check if any POS sub-module is active
-  useEffect(() => {
-    if (pathname.startsWith("/pos")) {
-      setPosOpen(true)
-    }
-  }, [pathname])
-
-  // Check if any purchase management sub-module is active
-  useEffect(() => {
-    if (pathname.startsWith("/purchase-management")) {
-      setPurchaseManagementOpen(true)
-    }
-  }, [pathname])
-
-  // Check if any parties sub-module is active
-  useEffect(() => {
-    if (pathname.startsWith("/parties")) {
-      setPartiesOpen(true)
-    }
-  }, [pathname])
-
-  // Check if any accounts management sub-module is active
-  useEffect(() => {
-    if (pathname.startsWith("/accounts-management")) {
-      setAccountsManagementOpen(true)
-    }
-  }, [pathname])
-
-  // Check if any returns sub-module is active
-  useEffect(() => {
-    if (pathname.startsWith("/returns")) {
-      setReturnsOpen(true)
-    }
-  }, [pathname])
-
-  // Check if any employee management sub-module is active
-  useEffect(() => {
-    if (pathname.startsWith("/employee-management")) {
-      setEmployeeManagementOpen(true)
-    }
-  }, [pathname])
-
-  // Check if on settings sub-modules
-  useEffect(() => {
-    if (pathname.startsWith("/users") || pathname.startsWith("/backup") || pathname.startsWith("/settings")) {
-      setSettingsOpen(true)
-    }
-  }, [pathname])
+  const toggleSection = (href: string) => {
+    setOpenSection(prev => prev === href ? null : href)
+  }
 
   // Define all possible navigation items with their required privileges
   const allNavItems = useMemo(
@@ -116,6 +73,7 @@ export function Sidebar({ user }: SidebarProps) {
           { href: "/parties/reports", label: "Party Reports", icon: BarChart3, privilege: "parties" as ModulePrivilege },
         ],
       },
+      { href: "/cash-book", label: "Cash Book", icon: BookCheck, privilege: "accounts" as ModulePrivilege },
       {
         href: "/stock-management",
         label: "Stock Management",
@@ -129,7 +87,6 @@ export function Sidebar({ user }: SidebarProps) {
           { href: "/stock-management/barcode", label: "Barcode", icon: ScanLine, privilege: "barcode" as ModulePrivilege },
         ],
       },
-      { href: "/cash-book", label: "Cash Book", icon: BookCheck, privilege: "accounts" as ModulePrivilege },
       {
         href: "/purchase-management",
         label: "Purchase Management",
@@ -297,48 +254,12 @@ export function Sidebar({ user }: SidebarProps) {
             const active = isActive(href)
 
             if (children && children.length > 0) {
-              const isPos = href === "/pos"
-              const isPurchaseManagement = href === "/purchase-management"
-              const isParties = href === "/parties"
-              const isAccountsManagement = href === "/accounts-management"
-              const isReturns = href === "/returns"
-              const isEmployeeManagement = href === "/employee-management"
-              const isSettingsGroup = href === "/settings-group"
-              const isOpen = isPos
-                ? posOpen
-                : isPurchaseManagement
-                  ? purchaseManagementOpen
-                  : isParties
-                    ? partiesOpen
-                    : isAccountsManagement
-                      ? accountsManagementOpen
-                      : isReturns
-                        ? returnsOpen
-                        : isEmployeeManagement
-                          ? employeeManagementOpen
-                          : isSettingsGroup
-                            ? settingsOpen
-                            : stockManagementOpen
-              const setOpenState = isPos
-                ? setPosOpen
-                : isPurchaseManagement
-                  ? setPurchaseManagementOpen
-                  : isParties
-                    ? setPartiesOpen
-                    : isAccountsManagement
-                      ? setAccountsManagementOpen
-                      : isReturns
-                        ? setReturnsOpen
-                        : isEmployeeManagement
-                          ? setEmployeeManagementOpen
-                          : isSettingsGroup
-                            ? setSettingsOpen
-                            : setStockManagementOpen
+              const isOpen = openSection === href
               return (
                 <Collapsible
                   key={href}
                   open={isOpen}
-                  onOpenChange={setOpenState}
+                  onOpenChange={() => toggleSection(href)}
                 >
                   <CollapsibleTrigger
                     className={`relative flex items-center justify-between w-full gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
@@ -357,7 +278,7 @@ export function Sidebar({ user }: SidebarProps) {
                       <ChevronRight className="w-4 h-4" />
                     )}
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="mt-1 space-y-1">
+                  <CollapsibleContent className="mt-1 space-y-1 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-up-2 overflow-hidden transition-all duration-200">
                     {children.map((child) => {
                       const childActive = isActive(child.href)
                       const ChildIcon = child.icon
