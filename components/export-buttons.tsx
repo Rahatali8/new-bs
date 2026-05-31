@@ -106,7 +106,7 @@ export function ExportButtons({
   </table>
   <div class="footer">
     <span class="footer-left">User Name: ${escapeHtml(printUserName)}</span>
-    <span class="footer-center">${new Date().toLocaleDateString("en-GB", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}<br>Design By: AN-Tech Solutions</span>
+    <span class="footer-center">${new Date().toLocaleDateString("en-GB", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}<br>Design By: InfoTech Developers</span>
     <span class="footer-right">Page 1</span>
   </div>
 </body>

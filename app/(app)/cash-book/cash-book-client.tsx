@@ -191,7 +191,7 @@ export function CashBookClient({ initialData, initialDateFrom, initialDateTo }: 
   </tr></thead>
   <tbody>${rows}</tbody>
 </table>
-<div class="footer">Printed: ${new Date().toLocaleString("en-PK")} | Design By: AN-Tech Solutions</div>
+<div class="footer">Printed: ${new Date().toLocaleString("en-PK")} | Design By: </div>
 </body></html>`)
     printWindow.document.close()
     printWindow.focus()

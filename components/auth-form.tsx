@@ -96,7 +96,7 @@ export function AuthForm() {
       {/* Footer */}
       <p className="text-center text-xs text-muted-foreground">
         Powered by{" "}
-        <span className="font-semibold text-indigo-600 dark:text-indigo-400">AN-Tech Solutions</span>
+        <span className="font-semibold text-indigo-600 dark:text-indigo-400">InfoTech Developers</span>
       </p>
     </div>
   )

@@ -76,7 +76,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
 
         {/* Bottom footer */}
         <div className="relative z-10 flex items-center justify-between">
-          <p className="text-slate-600 text-xs">© 2025 AN-Tech Solutions</p>
+          <p className="text-slate-600 text-xs">© 2025 InfoTech Developers</p>
           <div className="flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
             <span className="text-slate-500 text-xs">All systems operational</span>

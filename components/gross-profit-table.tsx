@@ -248,7 +248,7 @@ export function GrossProfitTable({ data, dateFrom, dateTo, timeFrom, timeTo, per
   <p class="note">Note: All Column values calculate on Last cost rate.</p>
   <div class="footer">
     <span>User Name: ADMIN</span>
-    <span class="footer-center">${today}<br>Design By: AN-Tech Solutions</span>
+    <span class="footer-center">${today}<br>Design By: InfoTech Developers</span>
     <span>Page 1</span>
   </div>
 </body>
