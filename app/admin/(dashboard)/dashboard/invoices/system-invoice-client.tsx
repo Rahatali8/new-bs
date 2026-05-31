@@ -9,6 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Download, FileText } from "lucide-react"
 import { printSystemInvoice } from "./print-system-invoice"
+import { saveSystemInvoice } from "./actions"
+import { toast } from "sonner"
+import { useRouter } from "next/navigation"
 
 interface UserOption {
   id: string
@@ -44,20 +47,40 @@ export function SystemInvoiceClient({ users }: { users: UserOption[] }) {
 
   const selectedUser = users.find((u) => u.id === userId)
   const effectiveEmail = billingEmail.trim() || selectedUser?.email || ""
+  const router = useRouter()
+  const [saving, setSaving] = useState(false)
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!userId || !amount || !plan) return
+    const numAmount = parseFloat(amount)
+    setSaving(true)
+    const result = await saveSystemInvoice({
+      invoiceNo,
+      clientId: userId,
+      clientName: selectedUser?.name || "",
+      clientEmail: effectiveEmail,
+      plan,
+      period: `${month} ${year}`,
+      amount: numAmount,
+      notes,
+    })
+    setSaving(false)
+    if (result.error) {
+      toast.error("Failed to save: " + result.error)
+    } else {
+      toast.success("Invoice saved")
+      router.refresh()
+    }
     printSystemInvoice({
       invoiceNo,
       clientName: selectedUser?.name || "",
       clientEmail: effectiveEmail,
       plan,
       period: `${month} ${year}`,
-      amount: parseFloat(amount),
+      amount: numAmount,
       notes,
       date: new Date().toLocaleDateString("en-PK"),
     })
-    // Refresh invoice number for next use
     setInvoiceNo(`INV-${Date.now().toString(36).toUpperCase()}`)
   }
 
@@ -164,11 +187,11 @@ export function SystemInvoiceClient({ users }: { users: UserOption[] }) {
 
           <Button
             className="w-full"
-            disabled={!userId || !amount || !plan}
+            disabled={!userId || !amount || !plan || saving}
             onClick={handleGenerate}
           >
             <Download className="w-4 h-4 mr-2" />
-            Generate &amp; Download Invoice
+            {saving ? "Saving..." : "Generate & Download Invoice"}
           </Button>
         </CardContent>
       </Card>
