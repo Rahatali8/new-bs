@@ -104,14 +104,15 @@ export function ComprehensivePOSSettings({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="pos_ncr">NCR Carbon Copy (80mm)</SelectItem>
-              <SelectItem value="a4">A4 (Full Page)</SelectItem>
+              <SelectItem value="a4_1">A4 — Style 1 (Professional Blue)</SelectItem>
+              <SelectItem value="a4_2">A4 — Style 2 (Dark Blue Wave)</SelectItem>
+              <SelectItem value="a4_3">A4 — Style 3 (Minimal Clean)</SelectItem>
+              <SelectItem value="thermal">Thermal Receipt (80mm)</SelectItem>
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">
-            <strong>NCR Carbon Copy:</strong> 80mm receipt — prints 2 copies (Original + Duplicate)
-            <br />
-            <strong>A4:</strong> Full-size A4 document — opens browser print dialog
+            <strong>A4 styles:</strong> Full-size A4 — opens browser print dialog<br />
+            <strong>Thermal:</strong> 80mm receipt for thermal printers
           </p>
         </div>
       </div>

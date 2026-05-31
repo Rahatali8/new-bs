@@ -62,12 +62,18 @@ export function POSSalesList({ sales }: POSSalesListProps) {
         toast.error(invoiceResult.error ?? "Failed to load invoice")
         return
       }
-      if (format === "a4") {
+      if (format === "a4_2") {
+        const { printA4Invoice2 } = await import("@/components/pos/print-a4-invoice-2")
+        await printA4Invoice2(invoiceResult.data)
+      } else if (format === "a4_3") {
+        const { printA4Invoice3 } = await import("@/components/pos/print-a4-invoice-3")
+        await printA4Invoice3(invoiceResult.data)
+      } else if (format === "thermal" || format === "pos_ncr") {
+        const { printThermalInvoice } = await import("@/components/pos/print-thermal-invoice")
+        await printThermalInvoice(invoiceResult.data)
+      } else {
         const { printA4Invoice } = await import("@/components/pos/print-a4-invoice")
         await printA4Invoice(invoiceResult.data)
-      } else {
-        const { printStandardInvoice } = await import("@/components/pos/print-standard-invoice")
-        await printStandardInvoice(invoiceResult.data)
       }
       toast.success("Print dialog opened")
     } catch (e) {
