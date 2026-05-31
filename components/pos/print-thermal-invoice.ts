@@ -58,10 +58,20 @@ export async function printThermalInvoice(data: InvoiceForPrint) {
       font-family: "Courier New", Courier, monospace;
       font-size: 9.5px;
       color: #000;
+      background: #f0f0f0;
+      display: flex;
+      justify-content: center;
+      padding: 10px 0;
+    }
+    .receipt {
       background: #fff;
       width: 76mm;
+      padding: 3mm 2mm;
     }
-    @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #fff; padding: 0; display: block; }
+      .receipt { width: 100%; padding: 0; }
+    }
 
     .center { text-align: center; }
     .bold { font-weight: 700; }
@@ -104,6 +114,7 @@ export async function printThermalInvoice(data: InvoiceForPrint) {
   </style>
 </head>
 <body>
+<div class="receipt">
 
   <!-- STORE HEADER -->
   <div class="store-name">${esc(storeName)}</div>
@@ -155,6 +166,7 @@ export async function printThermalInvoice(data: InvoiceForPrint) {
     * No return on damaged goods.
   </div>
 
+</div>
 </body>
 </html>`
 
