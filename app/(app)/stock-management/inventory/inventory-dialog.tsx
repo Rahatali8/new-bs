@@ -1,6 +1,7 @@
 "use client"
 
 import { useActionState, useEffect, useState, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { Plus, Pencil } from "lucide-react"
 import { createInventoryItem, updateInventoryItem } from "./actions"
 import { quickCreateCategory } from "@/app/(app)/stock-management/categories/actions"
@@ -52,6 +53,7 @@ interface InventoryDialogProps {
 }
 
 export default function InventoryDialog({ item, trigger }: InventoryDialogProps) {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [categories, setCategories] = useState<Category[]>([])
   const [units, setUnits] = useState<Unit[]>([])
@@ -181,24 +183,18 @@ export default function InventoryDialog({ item, trigger }: InventoryDialogProps)
     }
   }, [open, item?.category_id, item?.unit_id, item?.barcode, item?.cost_price, item?.cash_price, item?.credit_price, item?.supplier_price, item?.selling_price])
   
-  // Track pending state to detect when submission completes
-  useEffect(() => {
-    wasPendingRef.current = pending
-  }, [pending])
-
   // Close dialog on successful submission
   useEffect(() => {
-    // Only close if:
-    // 1. We were pending (submitting) and now we're not (submission completed)
-    // 2. There's no error (success)
-    // 3. Dialog is open
     if (wasPendingRef.current && !pending && !state.error && open) {
       const timer = setTimeout(() => {
         setOpen(false)
+        router.refresh()
       }, 300)
+      wasPendingRef.current = pending
       return () => clearTimeout(timer)
     }
-  }, [pending, state.error, open])
+    wasPendingRef.current = pending
+  }, [pending, state.error, open, router])
 
   const handleCreateCategory = async () => {
     if (!newCatName.trim()) { toast.error("Category name is required"); return }
@@ -251,8 +247,6 @@ export default function InventoryDialog({ item, trigger }: InventoryDialogProps)
 
         <form action={formAction} className="flex flex-col flex-1 overflow-hidden" key={isEdit ? `edit-${item?.id}` : `new-${open}`}>
           {isEdit && <input type="hidden" name="id" value={item.id} />}
-          <input type="hidden" name="category_id" value={selectedCategory} />
-          <input type="hidden" name="unit_id" value={selectedUnit} />
 
           {/* Scrollable body */}
           <div className="overflow-y-auto flex-1 px-6 py-4 space-y-5">

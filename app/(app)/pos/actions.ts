@@ -295,7 +295,7 @@ export async function getInvoiceForPrint(invoiceId: string) {
     `,
     )
     .eq("id", invoiceId)
-    .eq("user_id", user.id)
+    .eq("user_id", user.effectiveUserId)
     .single()
 
   if (invoiceError || !invoice) {
@@ -452,7 +452,7 @@ export async function getStoreSettings(): Promise<StoreSettings> {
   const { data } = await supabase
     .from("user_settings")
     .select("key, value")
-    .eq("user_id", user.id)
+    .eq("user_id", user.effectiveUserId)
     .in("key", [STORE_NAME_KEY, STORE_ADDRESS_KEY, STORE_PHONE_KEY, STORE_EMAIL_KEY])
 
   const settings: StoreSettings = {
