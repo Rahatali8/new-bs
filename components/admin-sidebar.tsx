@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Users } from "lucide-react"
+import { LayoutDashboard, Users, FileText } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export function AdminSidebar() {
@@ -18,6 +18,11 @@ export function AdminSidebar() {
       href: "/admin/dashboard/users",
       label: "POS Users",
       icon: Users,
+    },
+    {
+      href: "/admin/dashboard/invoices",
+      label: "System Invoices",
+      icon: FileText,
     },
   ]
 
