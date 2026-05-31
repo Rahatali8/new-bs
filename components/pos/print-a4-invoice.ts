@@ -19,73 +19,31 @@ function fmtDate(dateStr: string): string {
   return `${dd}/${mm}/${yyyy}`
 }
 
-function fmtTime(dateStr: string): string {
-  const d = new Date(dateStr)
-  let h = d.getHours()
-  const min = String(d.getMinutes()).padStart(2, "0")
-  const ampm = h >= 12 ? "pm" : "am"
-  h = h % 12 || 12
-  return `${h}:${min} ${ampm}`
-}
-
-function numberToWords(num: number): string {
-  const ones = [
-    "", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE",
-    "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN",
-    "SEVENTEEN", "EIGHTEEN", "NINETEEN",
-  ]
-  const tens = ["", "", "TWENTY", "THIRTY", "FORTY", "FIFTY", "SIXTY", "SEVENTY", "EIGHTY", "NINETY"]
-
-  if (num === 0) return "ZERO"
-
-  function convert(n: number): string {
-    if (n < 20) return ones[n]
-    if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? " " + ones[n % 10] : "")
-    if (n < 1000) return ones[Math.floor(n / 100)] + " HUNDRED" + (n % 100 ? " " + convert(n % 100) : "")
-    if (n < 100000) return convert(Math.floor(n / 1000)) + " THOUSAND" + (n % 1000 ? " " + convert(n % 1000) : "")
-    if (n < 10000000) return convert(Math.floor(n / 100000)) + " LAKH" + (n % 100000 ? " " + convert(n % 100000) : "")
-    return convert(Math.floor(n / 10000000)) + " CRORE" + (n % 10000000 ? " " + convert(n % 10000000) : "")
-  }
-
-  return convert(Math.floor(num)) + " ONLY"
-}
-
-/**
- * A4 Portrait Invoice — Black & White, SHOKIA TRADERS style
- */
 export async function printA4Invoice(data: InvoiceForPrint) {
   const invoiceNumber = data.invoiceNumber || data.id.substring(0, 8).toUpperCase()
-  const storeName     = data.store?.name    || ""
-  const storeAddress  = data.store?.address || ""
-  const storePhone    = data.store?.phone   || ""
-  const cashier       = data.cashier        || ""
-  const dateStr       = data.date ? fmtDate(data.date) : ""
-  const timeStr       = data.date ? fmtTime(data.date) : ""
+  const storeName    = data.store?.name    || "Your Company"
+  const storeAddress = data.store?.address || ""
+  const storePhone   = data.store?.phone   || ""
+  const storeEmail   = data.store?.email   || ""
+  const dateStr      = data.date ? fmtDate(data.date) : ""
 
-  const discount      = Number(data.discount || 0)
-  const grossAmount   = data.subtotal + (data.tax || 0)
-  const netAmount     = data.total
-  const amountWords   = numberToWords(Math.round(netAmount))
+  const discount   = Number(data.discount || 0)
+  const tax        = Number(data.tax || 0)
+  const subtotal   = Number(data.subtotal || 0)
+  const total      = Number(data.total || 0)
+  const totalPaid  = data.payments ? data.payments.reduce((s, p) => s + Number(p.amount || 0), 0) : 0
+  const remaining  = Math.max(0, total - totalPaid)
 
-  const payMethod = data.payments && data.payments.length > 0
-    ? [...new Set(data.payments.map((p) => p.method))].join(" / ")
-    : "Cash"
-
-  // Items table rows
   let itemRows = ""
-  data.items.forEach((item, i) => {
-    const discPct = 0
-    const discAmt = 0
+  data.items.forEach((item) => {
     itemRows += `
-      <tr>
-        <td class="tc">${i + 1}</td>
-        <td class="tl">${esc(item.name)}</td>
+      <tr class="item-row">
+        <td class="item-name">${esc(item.name)}</td>
         <td class="tc">${item.quantity}</td>
-        <td class="tr">${fmtMoney(item.unitPrice)}</td>
-        <td class="tc">0.00%</td>
-        <td class="tr">0.00</td>
-        <td class="tr fw">${fmtMoney(item.lineTotal)}</td>
-      </tr>`
+        <td class="tr">PKR ${fmtMoney(item.unitPrice)}</td>
+        <td class="tr">PKR ${fmtMoney(item.lineTotal)}</td>
+      </tr>
+      <tr class="item-sep"><td colspan="4"><hr class="item-hr"></td></tr>`
   })
 
   const html = `<!DOCTYPE html>
@@ -94,219 +52,205 @@ export async function printA4Invoice(data: InvoiceForPrint) {
   <meta charset="utf-8">
   <title>Invoice ${esc(invoiceNumber)}</title>
   <style>
-    @page { size: A4 portrait; margin: 10mm 12mm; }
+    @page { size: A4 portrait; margin: 15mm 18mm; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: Arial, Helvetica, sans-serif;
-      font-size: 10px;
-      color: #000;
+      font-size: 11px;
+      color: #222;
       background: #fff;
     }
     @media print {
       body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
 
-    /* ── Header ── */
-    .store-name  { text-align:center; font-size:20px; font-weight:900; letter-spacing:1px; }
-    .store-tag   { text-align:center; font-size:10px; font-weight:600; margin-top:1px; }
-    .store-addr  { text-align:center; font-size:9.5px; margin-top:1px; }
-    .divider     { border:none; border-top:2px solid #000; margin:4px 0; }
-    .divider-sm  { border:none; border-top:1px solid #000; margin:3px 0; }
+    /* ── Top header ── */
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; }
+    .invoice-title { font-size: 42px; font-weight: 900; color: #1a3472; line-height: 1; margin-bottom: 14px; }
+    .company-label { font-size: 11px; font-weight: 700; color: #333; margin-bottom: 4px; text-transform: uppercase; }
+    .company-detail { font-size: 10px; color: #555; line-height: 1.6; }
 
-    /* ── Customer / Bill info row ── */
-    .info-row    { width:100%; border-collapse:collapse; margin-bottom:4px; }
-    .info-row td { vertical-align:top; padding:1.5px 0; font-size:10px; }
-    .bill-box    { border:1px solid #000; padding:3px 6px; font-size:9.5px; }
-    .bill-box tr td { padding:1px 3px; }
-    .bill-box .lbl { font-weight:700; white-space:nowrap; padding-right:5px; }
+    .billed-section { text-align: left; min-width: 200px; }
+    .billed-label { font-size: 11px; font-weight: 700; color: #333; margin-bottom: 4px; text-transform: uppercase; }
+    .billed-detail { font-size: 10px; color: #555; line-height: 1.6; }
+
+    /* ── Invoice meta (right side) ── */
+    .meta-table { border-collapse: collapse; margin-left: auto; margin-bottom: 24px; min-width: 260px; }
+    .meta-table td { font-size: 11px; padding: 3px 6px; }
+    .meta-table .meta-key { font-weight: 700; color: #222; padding-right: 12px; }
+    .meta-table .meta-colon { color: #222; }
+    .meta-table .meta-val { color: #555; }
 
     /* ── Items table ── */
-    .items { width:100%; border-collapse:collapse; font-size:9.5px; margin-top:3px; table-layout:fixed; }
-    .items th {
-      border:1px solid #000;
-      padding:3px 4px;
-      font-weight:700;
-      background:#fff;
-      text-align:center;
-      overflow:hidden;
+    .items-table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
+    .items-table thead tr {
+      background-color: #1a3472;
     }
-    .items td { border:1px solid #000; padding:2.5px 4px; overflow:hidden; }
-    .tc { text-align:center; }
-    .tl { text-align:left; }
-    .tr { text-align:right; }
-    .fw { font-weight:700; }
-
-    /* ── Totals ── */
-    .totals-table { border-collapse:collapse; width:100%; }
-    .totals-table td { padding:2px 5px; font-size:10px; border:1px solid #000; }
-    .totals-table .lbl { font-weight:600; }
-    .totals-table .val { text-align:right; font-weight:600; }
-    .totals-table .net { font-weight:800; font-size:11px; }
-
-    /* ── Words ── */
-    .words-box {
-      border:1px solid #000;
-      padding:3px 6px;
-      font-size:9.5px;
+    .items-table thead th {
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 9px 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      border: 1px solid #1a3472;
     }
-    .words-box strong { font-weight:700; }
+    .items-table th:first-child { text-align: left; }
+    .item-row td { padding: 10px 10px 4px; vertical-align: top; border-left: 1px solid #d0d0d0; border-right: 1px solid #d0d0d0; }
+    .item-row td:first-child { border-left: 1px solid #d0d0d0; }
+    .item-sep td { padding: 0 10px; border-left: 1px solid #d0d0d0; border-right: 1px solid #d0d0d0; }
+    .item-hr { border: none; border-top: 1px solid #ccc; margin: 0; }
+    .item-name { font-size: 11px; font-weight: 600; }
+    .item-desc { font-size: 10px; color: #777; margin-top: 2px; }
+    .tc { text-align: center; }
+    .tr { text-align: right; }
 
-    /* ── Terms ── */
-    .terms { font-size:9px; margin-top:5px; line-height:1.6; }
+    /* Bottom border row after all items */
+    .items-end-row td { border-left: 1px solid #d0d0d0; border-right: 1px solid #d0d0d0; border-bottom: 3px solid #1a3472; height: 4px; padding: 0; }
 
-    /* ── Footer ── */
-    .footer {
-      display:flex;
-      justify-content:space-between;
-      align-items:flex-end;
-      margin-top:6px;
-      border-top:1.5px solid #000;
-      padding-top:4px;
-      font-size:9px;
+    /* ── Bottom section ── */
+    .bottom-section { display: flex; justify-content: space-between; align-items: flex-start; margin-top: 20px; }
+    .thank-you { color: #1a3472; font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+    .terms-label { font-size: 11px; font-weight: 700; color: #333; margin-bottom: 3px; }
+    .terms-text { font-size: 10px; color: #555; line-height: 1.6; max-width: 320px; }
+
+    /* ── Totals box ── */
+    .totals { min-width: 240px; }
+    .totals-row { display: flex; justify-content: space-between; font-size: 11px; padding: 4px 0; }
+    .totals-row .t-label { color: #555; }
+    .totals-row .t-val { font-weight: 600; }
+    .totals-total {
+      background-color: #1a3472;
+      color: #fff;
+      display: flex;
+      justify-content: space-between;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+    .totals-deposit {
+      background-color: #8fa8d8;
+      color: #fff;
+      display: flex;
+      justify-content: space-between;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+    .totals-remaining {
+      background-color: #e8edf7;
+      color: #1a3472;
+      display: flex;
+      justify-content: space-between;
+      padding: 7px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      margin-top: 2px;
     }
   </style>
 </head>
 <body>
 
-  <!-- STORE HEADER -->
-  <div class="store-name">${esc(storeName)}</div>
-  ${storeAddress ? `<div class="store-tag">${esc(storeAddress)}</div>` : ""}
-  ${storePhone   ? `<div class="store-addr">Contact Number : ${esc(storePhone)}</div>` : ""}
-  <hr class="divider">
+  <!-- HEADER: Left = Invoice title + company | Right = Billed To -->
+  <div class="header">
+    <div>
+      <div class="invoice-title">INVOICE</div>
+      <div class="company-label">${esc(storeName)}</div>
+      <div class="company-detail">
+        ${storeAddress ? esc(storeAddress) + "<br>" : ""}
+        ${storePhone   ? "Tel: " + esc(storePhone) + "<br>" : ""}
+        ${storeEmail   ? esc(storeEmail) : ""}
+      </div>
+    </div>
+    <div class="billed-section">
+      <div class="billed-label">Billed To</div>
+      <div class="billed-detail">
+        ${data.party?.name    ? "<strong>" + esc(data.party.name)    + "</strong><br>" : "Walk-in Customer<br>"}
+        ${data.party?.address ? esc(data.party.address) + "<br>"  : ""}
+        ${data.party?.phone   ? "Tel: " + esc(data.party.phone) : ""}
+      </div>
+    </div>
+  </div>
 
-  <!-- CUSTOMER INFO + BILL BOX -->
-  <table class="info-row" cellpadding="0" cellspacing="0">
+  <!-- INVOICE META: right-aligned -->
+  <table class="meta-table" cellpadding="0" cellspacing="0">
     <tr>
-      <td style="width:auto;">
-        <table cellpadding="0" cellspacing="0">
-          <tr>
-            <td style="font-weight:700;padding-right:6px;white-space:nowrap;">Customer Name:</td>
-            <td style="white-space:nowrap;">${data.party?.name ? esc(data.party.name) : ""}</td>
-          </tr>
-          <tr>
-            <td style="font-weight:700;padding-right:6px;white-space:nowrap;">Contact No:</td>
-            <td style="white-space:nowrap;">${data.party?.phone ? esc(data.party.phone) : ""}</td>
-          </tr>
-          ${data.party?.address ? `<tr>
-            <td style="font-weight:700;padding-right:6px;white-space:nowrap;">Address:</td>
-            <td>${esc(data.party.address)}</td>
-          </tr>` : ""}
-          ${cashier ? `<tr>
-            <td style="font-weight:700;padding-right:6px;white-space:nowrap;">User:</td>
-            <td style="white-space:nowrap;">${esc(cashier)}</td>
-          </tr>` : ""}
-        </table>
-      </td>
-      <td style="width:1px;"></td>
-      <td style="text-align:right;white-space:nowrap;">
-        <table class="bill-box" cellpadding="0" cellspacing="0" style="margin-left:auto;">
-          <tr>
-            <td class="lbl">Bill No:</td>
-            <td><strong>${esc(invoiceNumber)}</strong></td>
-          </tr>
-          <tr>
-            <td class="lbl">Date:</td>
-            <td>${esc(dateStr)}</td>
-          </tr>
-          <tr>
-            <td class="lbl">Time:</td>
-            <td>${esc(timeStr)}</td>
-          </tr>
-          <tr>
-            <td class="lbl">Payment:</td>
-            <td>${esc(payMethod)}</td>
-          </tr>
-        </table>
-      </td>
+      <td class="meta-key">Invoice No</td>
+      <td class="meta-colon">:</td>
+      <td class="meta-val"><strong>${esc(invoiceNumber)}</strong></td>
     </tr>
+    <tr>
+      <td class="meta-key">Issue Date</td>
+      <td class="meta-colon">:</td>
+      <td class="meta-val">${esc(dateStr)}</td>
+    </tr>
+    <tr>
+      <td class="meta-key">Status</td>
+      <td class="meta-colon">:</td>
+      <td class="meta-val">${esc(data.status)}</td>
+    </tr>
+    ${data.cashier ? `<tr>
+      <td class="meta-key">Cashier</td>
+      <td class="meta-colon">:</td>
+      <td class="meta-val">${esc(data.cashier)}</td>
+    </tr>` : ""}
   </table>
 
-  <hr class="divider-sm">
-
   <!-- ITEMS TABLE -->
-  <table class="items" cellpadding="0" cellspacing="0">
-    <colgroup>
-      <col style="width:5%">
-      <col style="width:31%">
-      <col style="width:8%">
-      <col style="width:16%">
-      <col style="width:10%">
-      <col style="width:12%">
-      <col style="width:18%">
-    </colgroup>
+  <table class="items-table" cellpadding="0" cellspacing="0">
     <thead>
       <tr>
-        <th>S#</th>
-        <th style="text-align:left;">Item Name</th>
-        <th>Qty</th>
-        <th>Unit Price</th>
-        <th>Disc%</th>
-        <th>Disc Amt</th>
-        <th>Amount</th>
+        <th style="text-align:left; width:50%;">Items Description</th>
+        <th style="text-align:center; width:12%;">Qty</th>
+        <th style="text-align:right; width:19%;">Unit Price</th>
+        <th style="text-align:right; width:19%;">Total</th>
       </tr>
     </thead>
     <tbody>
       ${itemRows}
+      <tr class="items-end-row"><td colspan="4"></td></tr>
     </tbody>
-    <tfoot>
-      <tr>
-        <td class="tc fw" colspan="2">Total Items: ${data.items.length}</td>
-        <td class="tc fw">${data.items.reduce((s, i) => s + i.quantity, 0)}</td>
-        <td colspan="3"></td>
-        <td class="tr fw">${fmtMoney(grossAmount)}</td>
-      </tr>
-    </tfoot>
   </table>
 
-  <!-- BOTTOM ROW: Words+Terms (left) | Totals (right) -->
-  <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:4px;vertical-align:top;">
-    <tr>
-      <!-- LEFT: Amount in words + Terms -->
-      <td style="vertical-align:top;padding-right:8px;">
-        <div class="words-box">
-          <strong>Amount In Words:</strong> ${esc(amountWords)}
-        </div>
-        <div class="terms">
-          1. Damage and expiry item are not refundable.<br>
-          2. Plz Count Cash Before Leave Counter.
-        </div>
-      </td>
-      <!-- RIGHT: Totals box -->
-      <td style="vertical-align:top;width:200px;">
-        <table class="totals-table" width="100%" cellpadding="0" cellspacing="0">
-          ${data.tax > 0 ? `
-          <tr>
-            <td class="lbl">Subtotal:</td>
-            <td class="val">${fmtMoney(data.subtotal)}</td>
-          </tr>
-          <tr>
-            <td class="lbl">Tax:</td>
-            <td class="val">${fmtMoney(data.tax)}</td>
-          </tr>` : ""}
-          <tr>
-            <td class="lbl">Gross Amount:</td>
-            <td class="val">${fmtMoney(grossAmount)}</td>
-          </tr>
-          <tr>
-            <td class="lbl">Less Discount:</td>
-            <td class="val">${fmtMoney(discount)}</td>
-          </tr>
-          <tr>
-            <td class="lbl net">Net Amount:</td>
-            <td class="val net">${fmtMoney(netAmount)}</td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-
-  <!-- FOOTER -->
-  <div class="footer">
+  <!-- BOTTOM: Thank you + terms | Totals -->
+  <div class="bottom-section">
     <div>
-      ${storePhone ? `<strong>Contact No:</strong> ${esc(storePhone)}` : ""}
+      <div class="thank-you">THANK YOU FOR YOUR BUSINESS</div>
+      <div class="terms-label">Invoice Terms:</div>
+      <div class="terms-text">
+        1. Only products can be exchanged within 7 days of sales.<br>
+        2. Check your product before leaving counter.<br>
+        3. Damaged products — no exchange or return.<br>
+        <em>*No exchange or return without sale receipt.</em>
+      </div>
     </div>
-    <div style="text-align:right;">
-      <strong>Status:</strong> ${esc(data.status)}
+    <div class="totals">
+      <div class="totals-row">
+        <span class="t-label">Sub Total</span>
+        <span class="t-val">PKR ${fmtMoney(subtotal)}</span>
+      </div>
+      ${tax > 0 ? `<div class="totals-row">
+        <span class="t-label">Tax / VAT</span>
+        <span class="t-val">PKR ${fmtMoney(tax)}</span>
+      </div>` : ""}
+      <div class="totals-row">
+        <span class="t-label">Discount</span>
+        <span class="t-val">PKR ${fmtMoney(discount)}</span>
+      </div>
+      <div class="totals-total">
+        <span>TOTAL</span>
+        <span>PKR ${fmtMoney(total)}</span>
+      </div>
+      <div class="totals-deposit">
+        <span>DEPOSIT</span>
+        <span>PKR ${fmtMoney(totalPaid)}</span>
+      </div>
+      ${remaining > 0 ? `<div class="totals-remaining">
+        <span>REMAINING</span>
+        <span>PKR ${fmtMoney(remaining)}</span>
+      </div>` : ""}
     </div>
   </div>
 
