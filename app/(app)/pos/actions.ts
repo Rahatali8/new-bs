@@ -603,6 +603,7 @@ export async function createCustomerPayment(payload: {
   revalidatePath("/pos/sales")
   revalidatePath("/pos/payments")
   revalidatePath("/parties")
+  revalidatePath("/parties", "layout")
   revalidatePath("/invoices")
   return { error: null }
 }

@@ -410,3 +410,75 @@ export async function getPartyLedger(partyId: string) {
   return { error: null, data: { party, ledgerRows } }
 }
 
+export async function createPartyPayment(payload: {
+  partyId: string
+  amount: number
+  method: string
+}) {
+  const currentUser = await getSessionOrRedirect()
+  const supabase = createClient()
+
+  if (!payload.partyId || !payload.amount || payload.amount <= 0) {
+    return { error: "Valid party and amount required" }
+  }
+
+  // Get outstanding invoices oldest first
+  const { data: invoices } = await supabase
+    .from("sales_invoices")
+    .select("id, total, status")
+    .eq("party_id", payload.partyId)
+    .eq("user_id", currentUser.effectiveUserId)
+    .in("status", ["Pending", "Credit", "Draft"])
+    .order("created_at", { ascending: true })
+
+  if (!invoices || invoices.length === 0) {
+    return { error: "No outstanding invoices for this party" }
+  }
+
+  // Fetch existing payments for these invoices
+  const invoiceIds = invoices.map((i) => i.id)
+  const { data: existingPayments } = await supabase
+    .from("payments")
+    .select("invoice_id, amount")
+    .in("invoice_id", invoiceIds)
+    .eq("user_id", currentUser.effectiveUserId)
+
+  // Calculate remaining balance per invoice
+  const invoiceBalances = invoices.map((inv) => {
+    const paid = (existingPayments || [])
+      .filter((p) => p.invoice_id === inv.id)
+      .reduce((s, p) => s + Number(p.amount || 0), 0)
+    return { id: inv.id, total: Number(inv.total || 0), remaining: Number(inv.total || 0) - paid }
+  }).filter((i) => i.remaining > 0)
+
+  // Cascade payment across invoices oldest-first
+  let remaining = payload.amount
+  for (const inv of invoiceBalances) {
+    if (remaining <= 0) break
+    const toApply = Math.min(remaining, inv.remaining)
+    const { error: insertError } = await supabase.from("payments").insert({
+      invoice_id: inv.id,
+      amount: toApply,
+      method: payload.method,
+      user_id: currentUser.effectiveUserId,
+    })
+    if (insertError) return { error: insertError.message }
+    remaining -= toApply
+
+    // Update invoice status
+    const { data: allPmts } = await supabase
+      .from("payments").select("amount")
+      .eq("invoice_id", inv.id).eq("user_id", currentUser.effectiveUserId)
+    const totalPaid = (allPmts || []).reduce((s, p) => s + Number(p.amount || 0), 0)
+    const newStatus = totalPaid >= inv.total ? "Paid" : "Pending"
+    await supabase.from("sales_invoices").update({ status: newStatus })
+      .eq("id", inv.id).eq("user_id", currentUser.effectiveUserId)
+  }
+
+  revalidatePath("/parties")
+  revalidatePath("/parties", "layout")
+  revalidatePath("/pos/payments")
+  revalidatePath("/pos/sales")
+  return { error: null }
+}
+

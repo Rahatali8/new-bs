@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/server"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { requirePrivilege } from "@/lib/auth/privileges"
@@ -9,6 +8,7 @@ import { ArrowLeft, FileText, CreditCard, RotateCcw } from "lucide-react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ExportButtons } from "@/components/export-buttons"
+import { ReceivePaymentButton } from "@/components/receive-payment-button"
 
 export default async function PartyLedgerPage({ params }: { params: Promise<{ id: string }> }) {
   await requirePrivilege("parties")
@@ -38,16 +38,21 @@ export default async function PartyLedgerPage({ params }: { params: Promise<{ id
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/parties">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-xl sm:text-2xl font-semibold text-foreground">{party.name}</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground">Account Ledger</p>
+      <div className="flex items-center justify-between gap-4 w-full">
+        <div className="flex items-center gap-4">
+          <Link href="/parties">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-semibold text-foreground">{party.name}</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground">Account Ledger</p>
+          </div>
         </div>
+        {party.type !== "Vendor" && currentBalance > 0 && (
+          <ReceivePaymentButton partyId={party.id} partyName={party.name} outstandingBalance={currentBalance} />
+        )}
       </div>
 
       {/* Summary Cards */}
