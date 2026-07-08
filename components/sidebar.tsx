@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useMemo, useState, useEffect } from "react"
-import { BarChart3, Users, Package, Plus, Menu, X, UserCog, Warehouse, FileText as FileTextIcon, Tags, ScanLine, ChevronDown, ChevronRight, Ruler, ShoppingCart, Receipt, Settings, ShoppingBag, CreditCard, DollarSign, BookOpen, RotateCcw, Wallet, TrendingUp, HardDriveDownload, BookCheck, Building2, Percent, Palette, Bell, Shield, SlidersHorizontal, Cpu } from "lucide-react"
+import { BarChart3, Users, Package, Plus, Menu, X, UserCog, Warehouse, FileText as FileTextIcon, Tags, ScanLine, ChevronDown, ChevronRight, Ruler, ShoppingCart, Receipt, Settings, ShoppingBag, CreditCard, DollarSign, BookOpen, RotateCcw, Wallet, TrendingUp, HardDriveDownload, BookCheck, Building2, Percent, Palette, Bell, Shield, SlidersHorizontal, Cpu, UserCheck } from "lucide-react"
 import Image from "next/image"
 import { PosUser, ModulePrivilege } from "@/lib/types/user"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
@@ -23,7 +23,7 @@ interface NavItem {
 
 function getOpenSection(path: string): string | null {
   if (path.startsWith("/pos")) return "/pos"
-  if (path.startsWith("/parties")) return "/parties"
+  if (path.startsWith("/parties") || path.startsWith("/bookers")) return "/parties"
   if (path.startsWith("/stock-management")) return "/stock-management"
   if (path.startsWith("/purchase-management")) return "/purchase-management"
   if (path.startsWith("/accounts-management")) return "/accounts-management"
@@ -71,6 +71,8 @@ export function Sidebar({ user }: SidebarProps) {
           { href: "/parties", label: "Parties List", icon: Users, privilege: "parties" as ModulePrivilege },
           { href: "/parties/add", label: "Add Party", icon: Plus, privilege: "parties" as ModulePrivilege },
           { href: "/parties/reports", label: "Party Reports", icon: BarChart3, privilege: "parties" as ModulePrivilege },
+          { href: "/bookers", label: "Bookers", icon: UserCheck, privilege: "parties" as ModulePrivilege },
+          { href: "/bookers/add", label: "Add Booker", icon: Plus, privilege: "parties" as ModulePrivilege },
         ],
       },
       { href: "/cash-book", label: "Cash Book", icon: BookCheck, privilege: "accounts" as ModulePrivilege },
@@ -203,7 +205,7 @@ export function Sidebar({ user }: SidebarProps) {
     if (href === "/dashboard") return pathname === "/" || pathname.startsWith("/dashboard")
     if (href === "/stock-management") return pathname.startsWith("/stock-management")
     if (href === "/purchase-management") return pathname.startsWith("/purchase-management")
-    if (href === "/parties") return pathname.startsWith("/parties")
+    if (href === "/parties") return pathname.startsWith("/parties") || pathname.startsWith("/bookers")
     if (href === "/accounts-management") return pathname.startsWith("/accounts-management")
     if (href === "/cash-book") return pathname.startsWith("/cash-book")
     if (href === "/returns") return pathname.startsWith("/returns")

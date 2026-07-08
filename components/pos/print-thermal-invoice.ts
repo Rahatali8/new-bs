@@ -131,6 +131,7 @@ export async function printThermalInvoice(data: InvoiceForPrint) {
   ${data.party?.name && data.party.name !== "Walk-in Customer"
     ? `<div class="meta"><span><strong>Customer:</strong> ${esc(data.party.name)}</span></div>` : ""}
   ${data.cashier ? `<div class="meta"><span><strong>User:</strong> ${esc(data.cashier)}</span></div>` : ""}
+  ${data.booker?.name ? `<div class="meta"><span><strong>Booker:</strong> ${esc(data.booker.name)}</span></div>` : ""}
 
   <hr class="dash-line">
 

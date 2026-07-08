@@ -43,6 +43,7 @@ export interface InvoiceForPrint {
   invoiceNumber: string
   date: string
   party: { name: string; phone?: string; address?: string } | null
+  booker?: { name: string; phone?: string } | null
   subtotal: number
   discount: number
   tax: number
@@ -77,6 +78,7 @@ export interface POSPaymentInput {
 
 export interface CreatePOSSaleInput {
   partyId: string
+  bookerId?: string | null
   items: POSSaleItemInput[]
   taxRate?: number
   discount?: number

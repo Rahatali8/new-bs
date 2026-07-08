@@ -82,6 +82,7 @@ export async function createPOSSale(payload: CreatePOSSaleInput) {
     .from("sales_invoices")
     .insert({
       party_id: payload.partyId,
+      booker_id: payload.bookerId || null,
       subtotal,
       discount,
       tax,
@@ -273,7 +274,7 @@ export async function getInvoiceForPrint(invoiceId: string) {
   const supabase = createClient()
   const user = await getSessionOrRedirect()
 
-  // Fetch invoice with party (verify ownership)
+  // Fetch invoice with party and booker (verify ownership)
   const { data: invoice, error: invoiceError } = await supabase
     .from("sales_invoices")
     .select(
@@ -290,6 +291,11 @@ export async function getInvoiceForPrint(invoiceId: string) {
         name,
         phone,
         address
+      ),
+      bookers:booker_id (
+        id,
+        name,
+        phone
       )
     `,
     )
@@ -347,6 +353,18 @@ export async function getInvoiceForPrint(invoiceId: string) {
       }
     : null
 
+  // Extract booker data
+  const bookerData = (invoice as any).bookers
+    ? (Array.isArray((invoice as any).bookers) ? (invoice as any).bookers[0] : (invoice as any).bookers)
+    : null
+
+  const booker = bookerData
+    ? {
+        name: (bookerData as { name?: string })?.name || "",
+        phone: (bookerData as { phone?: string })?.phone,
+      }
+    : null
+
   // Extract items
   const items = (lineItems || []).map((line: any) => {
     const invItem = line.inventory_items
@@ -391,6 +409,7 @@ export async function getInvoiceForPrint(invoiceId: string) {
     transactionId,
     date: invoice.created_at || new Date().toISOString(),
     party,
+    booker,
     subtotal: invoice.subtotal || 0,
     discount: Number((invoice as any).discount || 0),
     tax: invoice.tax || 0,

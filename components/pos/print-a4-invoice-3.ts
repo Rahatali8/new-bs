@@ -142,6 +142,7 @@ export async function printA4Invoice3(data: InvoiceForPrint) {
         <tr><td class="key">Date</td><td class="val">${esc(dateStr)}</td></tr>
         <tr><td class="key">Status</td><td class="val">${esc(data.status)}</td></tr>
         ${data.cashier ? `<tr><td class="key">Cashier</td><td class="val">${esc(data.cashier)}</td></tr>` : ""}
+        ${data.booker?.name ? `<tr><td class="key">Booker</td><td class="val">${esc(data.booker.name)}</td></tr>` : ""}
       </table>
     </div>
   </div>

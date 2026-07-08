@@ -196,6 +196,11 @@ export async function printA4Invoice(data: InvoiceForPrint) {
       <td class="meta-colon">:</td>
       <td class="meta-val">${esc(data.cashier)}</td>
     </tr>` : ""}
+    ${data.booker?.name ? `<tr>
+      <td class="meta-key">Booker</td>
+      <td class="meta-colon">:</td>
+      <td class="meta-val">${esc(data.booker.name)}</td>
+    </tr>` : ""}
   </table>
 
   <!-- ITEMS TABLE -->

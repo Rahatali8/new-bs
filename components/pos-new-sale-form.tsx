@@ -14,11 +14,13 @@ import { toast } from "sonner"
 import { useCurrency } from "@/contexts/currency-context"
 import type { PaymentMethod } from "@/lib/types/pos"
 type PartyOption = { id: string; name: string; address?: string | null }
+type BookerOption = { id: string; name: string; phone: string }
 type InventoryOption = { id: string; name: string; stock: number; unitPrice: number; cashPrice?: number; creditPrice?: number; supplierPrice?: number; costPrice?: number }
 type CartItem = { itemId: string; quantity: number; unitPrice: number; priceType?: "cash" | "credit" | "supplier"; discount: number }
 
 interface POSNewSaleFormProps {
   parties: PartyOption[]
+  bookers?: BookerOption[]
   inventory: InventoryOption[]
   initialItemId?: string | null
   autoAdd?: boolean
@@ -32,8 +34,9 @@ interface POSNewSaleFormProps {
   }
 }
 
-export function POSNewSaleForm({ parties, inventory, initialItemId, autoAdd, initialSale, walkInPartyId, isOwner }: POSNewSaleFormProps) {
+export function POSNewSaleForm({ parties, bookers = [], inventory, initialItemId, autoAdd, initialSale, walkInPartyId, isOwner }: POSNewSaleFormProps) {
   const [localParties, setLocalParties] = useState<PartyOption[]>(parties)
+  const [bookerId, setBookerId] = useState("")
   const [newCustomerOpen, setNewCustomerOpen] = useState(false)
   const [newCustName, setNewCustName] = useState("")
   const [newCustPhone, setNewCustPhone] = useState("")
@@ -515,7 +518,7 @@ export function POSNewSaleForm({ parties, inventory, initialItemId, autoAdd, ini
           ? { status: "Credit" as const, ...(payingNow > 0 ? { payments: [{ amount: payingNow, method: paymentMethod, reference: transactionRef || undefined }] } : {}) }
           : { status: "Draft" as const }
 
-      const result = await createPOSSale({ partyId: effectivePartyId, items: lineItems, taxRate, discount: computed.discount, ...payload })
+      const result = await createPOSSale({ partyId: effectivePartyId, bookerId: bookerId || null, items: lineItems, taxRate, discount: computed.discount, ...payload })
       if (result.error) {
         toast.error(result.error)
         return
@@ -525,6 +528,7 @@ export function POSNewSaleForm({ parties, inventory, initialItemId, autoAdd, ini
       const customerName = localParties.find((p) => p.id === partyId)?.name ?? ""
       setItems([])
       setPartyId("")
+      setBookerId("")
       setCustomerQuery("")
       if (effectiveSaleMode === "sale") {
         setCompletedTotal(computed.total)
@@ -750,6 +754,23 @@ export function POSNewSaleForm({ parties, inventory, initialItemId, autoAdd, ini
               />
             )}
           </div>
+          {partyId && partyId !== walkInPartyId && bookers.length > 0 && (
+            <div className="space-y-2">
+              <Label>Booker</Label>
+              <select
+                value={bookerId}
+                onChange={(e) => setBookerId(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <option value="">-- Select Booker (Optional) --</option>
+                {bookers.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="space-y-2">
