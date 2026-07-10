@@ -1,18 +1,27 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, HandCoins, UserCheck } from "lucide-react"
 import { isSupabaseReady } from "@/lib/supabase/config"
 import { requirePrivilege } from "@/lib/auth/privileges"
 import { getAllCustomerPayments, getUnpaidPOSSales, getPaidSales } from "@/app/(app)/pos/actions"
+import { getRecoverySummary, type RecoverySummary } from "@/lib/db/recovery"
 import { CustomerPaymentDialog } from "@/components/customer-payment-dialog"
 import { CurrencyDisplay } from "@/components/currency-display"
 import { DeleteCustomerPaymentButton } from "@/components/delete-customer-payment-button"
 import { ExportButtons } from "@/components/export-buttons"
 
+const EMPTY_RECOVERY: RecoverySummary = {
+  todayRecovery: 0,
+  totalOutstanding: 0,
+  totalCollected: 0,
+  bookers: [],
+  salesmen: [],
+}
+
 export default async function CustomerPaymentsPage() {
   await requirePrivilege("pos")
 
-  const [payments, unpaidSales, paidSales] = await Promise.all([
+  const [payments, unpaidSales, paidSales, recovery] = await Promise.all([
     (async () => {
       if (!isSupabaseReady()) return []
       const result = await getAllCustomerPayments()
@@ -27,6 +36,10 @@ export default async function CustomerPaymentsPage() {
       if (!isSupabaseReady()) return []
       const result = await getPaidSales()
       return result.data || []
+    })(),
+    (async () => {
+      if (!isSupabaseReady()) return EMPTY_RECOVERY
+      return getRecoverySummary()
     })(),
   ])
 
@@ -66,7 +79,7 @@ export default async function CustomerPaymentsPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="p-4 sm:p-6">
             <CardTitle className="text-base sm:text-lg">Total Received</CardTitle>
@@ -105,6 +118,21 @@ export default async function CustomerPaymentsPage() {
             <p className="text-xs sm:text-sm text-muted-foreground mt-1">{unpaidSales.length} unpaid invoice(s)</p>
           </CardContent>
         </Card>
+
+        <Card className="border-emerald-200 dark:border-emerald-800">
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <HandCoins className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              Today's Recovery
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 sm:p-6">
+            <div className="text-2xl sm:text-3xl font-bold text-emerald-600 dark:text-emerald-400">
+              <CurrencyDisplay amount={recovery.todayRecovery} />
+            </div>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">collected by salesmen today</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Outstanding by Customer */}
@@ -131,6 +159,89 @@ export default async function CustomerPaymentsPage() {
                       <td className="py-2 sm:py-3 px-4 text-xs sm:text-sm text-right font-semibold text-amber-600 dark:text-amber-400">
                         <CurrencyDisplay amount={c.balance} />
                       </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Booker-wise Udhaar & Recovery (only shown once bookers exist) */}
+      {recovery.bookers.length > 0 && (
+        <Card>
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <UserCheck className="w-4 h-4" />
+              Booker-wise Udhaar
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0 sm:p-6">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-muted-foreground border-b">
+                    <th className="py-2 sm:py-3 px-4 text-xs sm:text-sm">Booker</th>
+                    <th className="py-2 sm:py-3 px-4 text-xs sm:text-sm hidden sm:table-cell">Phone</th>
+                    <th className="py-2 sm:py-3 px-4 text-xs sm:text-sm text-right">Total Sales</th>
+                    <th className="py-2 sm:py-3 px-4 text-xs sm:text-sm text-right">Recovered</th>
+                    <th className="py-2 sm:py-3 px-4 text-xs sm:text-sm text-right">Outstanding</th>
+                    <th className="py-2 sm:py-3 px-4 text-xs sm:text-sm text-right">Today</th>
+                  </tr>
+                </thead>
+                <tbody className="[&>tr:not(:last-child)]:border-b">
+                  {recovery.bookers.map((b) => (
+                    <tr key={b.bookerId} className="hover:bg-muted/50">
+                      <td className="py-2 sm:py-3 px-4 font-medium text-xs sm:text-sm">{b.name}</td>
+                      <td className="py-2 sm:py-3 px-4 text-xs sm:text-sm text-muted-foreground hidden sm:table-cell">{b.phone}</td>
+                      <td className="py-2 sm:py-3 px-4 text-xs sm:text-sm text-right"><CurrencyDisplay amount={b.totalSales} /></td>
+                      <td className="py-2 sm:py-3 px-4 text-xs sm:text-sm text-right text-emerald-600"><CurrencyDisplay amount={b.totalCollected} /></td>
+                      <td className="py-2 sm:py-3 px-4 text-xs sm:text-sm text-right font-semibold text-amber-600 dark:text-amber-400">
+                        <CurrencyDisplay amount={b.outstanding} />
+                      </td>
+                      <td className="py-2 sm:py-3 px-4 text-xs sm:text-sm text-right"><CurrencyDisplay amount={b.todayCollected} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Salesman Collections (only shown once salesman logins exist) */}
+      {recovery.salesmen.length > 0 && (
+        <Card>
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <HandCoins className="w-4 h-4" />
+              Salesman Collections
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0 sm:p-6">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-muted-foreground border-b">
+                    <th className="py-2 sm:py-3 px-4 text-xs sm:text-sm">Salesman</th>
+                    <th className="py-2 sm:py-3 px-4 text-xs sm:text-sm">Booker</th>
+                    <th className="py-2 sm:py-3 px-4 text-xs sm:text-sm text-right">Today's Collection</th>
+                    <th className="py-2 sm:py-3 px-4 text-xs sm:text-sm text-right">Total Collection</th>
+                  </tr>
+                </thead>
+                <tbody className="[&>tr:not(:last-child)]:border-b">
+                  {recovery.salesmen.map((s) => (
+                    <tr key={s.userId} className="hover:bg-muted/50">
+                      <td className="py-2 sm:py-3 px-4 text-xs sm:text-sm">
+                        <span className="font-medium">{s.name}</span>
+                        {!s.isActive && <Badge variant="secondary" className="ml-2">Inactive</Badge>}
+                      </td>
+                      <td className="py-2 sm:py-3 px-4 text-xs sm:text-sm text-muted-foreground">{s.bookerName}</td>
+                      <td className="py-2 sm:py-3 px-4 text-xs sm:text-sm text-right font-semibold text-emerald-600">
+                        <CurrencyDisplay amount={s.todayCollected} />
+                      </td>
+                      <td className="py-2 sm:py-3 px-4 text-xs sm:text-sm text-right"><CurrencyDisplay amount={s.totalCollected} /></td>
                     </tr>
                   ))}
                 </tbody>

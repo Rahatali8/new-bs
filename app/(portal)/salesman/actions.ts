@@ -87,7 +87,6 @@ export async function recordCollection(payload: {
 
   revalidatePath("/salesman")
   revalidatePath("/booker")
-  revalidatePath("/recovery")
   revalidatePath("/pos/payments")
   return { error: null }
 }

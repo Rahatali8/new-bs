@@ -76,7 +76,6 @@ export function Sidebar({ user }: SidebarProps) {
         ],
       },
       { href: "/cash-book", label: "Cash Book", icon: BookCheck, privilege: "accounts" as ModulePrivilege },
-      { href: "/recovery", label: "Recovery", icon: Wallet, privilege: "accounts" as ModulePrivilege },
       {
         href: "/stock-management",
         label: "Stock Management",
