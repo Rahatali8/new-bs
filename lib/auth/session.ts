@@ -2,24 +2,22 @@
 
 import { cookies } from "next/headers"
 import { PosUser } from "@/lib/types/user"
+import { signSessionValue, verifySessionValue } from "@/lib/auth/signed-cookie"
 
 const SESSION_COOKIE_NAME = "pos_user_session"
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7 // 7 days
 
-// Store user session in cookie
+// Store user session in cookie (HMAC-signed so it can't be forged)
 export async function setUserSession(user: PosUser) {
   const cookieStore = await cookies()
-  
-  // Store user ID and basic info in cookie
-  // In production, you might want to use a session token instead
+
   const sessionData = {
     userId: user.id,
     email: user.email,
     role: user.role,
-    privileges: user.privileges,
   }
 
-  cookieStore.set(SESSION_COOKIE_NAME, JSON.stringify(sessionData), {
+  cookieStore.set(SESSION_COOKIE_NAME, signSessionValue(sessionData), {
     httpOnly: true,
     secure: process.env.COOKIE_SECURE !== "false" && process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -38,12 +36,17 @@ export async function getUserSession(): Promise<PosUser | null> {
   }
 
   try {
-    const sessionData = JSON.parse(sessionCookie.value)
-    
+    // Reject tampered or unsigned (legacy) cookies
+    const sessionData = verifySessionValue<{ userId: string }>(sessionCookie.value)
+    if (!sessionData?.userId) {
+      await clearUserSession()
+      return null
+    }
+
     // Fetch full user data from database to ensure it's still valid
     const { getUserById } = await import("@/lib/db/users")
     const user = await getUserById(sessionData.userId)
-    
+
     if (!user || !user.is_active) {
       // Clear invalid session
       await clearUserSession()

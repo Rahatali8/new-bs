@@ -22,9 +22,16 @@ import {
 
 interface UsersListProps {
   initialUsers: PosUser[]
+  bookers?: Array<{ id: string; name: string; phone: string }>
 }
 
-export function UsersList({ initialUsers }: UsersListProps) {
+const ROLE_LABELS: Record<string, string> = {
+  sub_pos_user: "Staff",
+  booker: "Booker",
+  salesman: "Salesman",
+}
+
+export function UsersList({ initialUsers, bookers = [] }: UsersListProps) {
   const [users, setUsers] = useState<PosUser[]>(initialUsers)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<PosUser | null>(null)
@@ -105,6 +112,7 @@ export function UsersList({ initialUsers }: UsersListProps) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-semibold text-foreground truncate">{user.name || user.email}</h3>
+                      <Badge variant="outline">{ROLE_LABELS[user.role] || user.role}</Badge>
                       {user.is_active ? (
                         <Badge variant="default" className="bg-green-500">
                           <CheckCircle2 className="w-3 h-3 mr-1" />
@@ -120,7 +128,9 @@ export function UsersList({ initialUsers }: UsersListProps) {
                     <p className="text-sm text-muted-foreground truncate">{user.email}</p>
                     <div className="flex items-center gap-2 mt-2">
                       <span className="text-xs text-muted-foreground">
-                        {getPrivilegeCount(user.privileges)} privilege(s) assigned
+                        {user.role === "booker" || user.role === "salesman"
+                          ? `Linked booker: ${bookers.find((b) => b.id === user.booker_id)?.name || "—"}`
+                          : `${getPrivilegeCount(user.privileges)} privilege(s) assigned`}
                       </span>
                     </div>
                   </div>
@@ -143,6 +153,7 @@ export function UsersList({ initialUsers }: UsersListProps) {
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         user={editingUser}
+        bookers={bookers}
         onUserSaved={handleUserSaved}
       />
 

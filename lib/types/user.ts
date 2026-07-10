@@ -1,6 +1,6 @@
 // User types and privilege definitions
 
-export type UserRole = "pos_user" | "sub_pos_user"
+export type UserRole = "pos_user" | "sub_pos_user" | "booker" | "salesman"
 
 export type ModulePrivilege =
   | "dashboard"
@@ -43,6 +43,7 @@ export interface PosUser {
   password_hash: string // bcrypt hashed password
   role: UserRole
   parent_user_id: string | null // null for pos_user (admin), user_id for sub_pos_user
+  booker_id?: string | null // booker role: own bookers row; salesman role: linked booker
   privileges: UserPrivileges
   name?: string
   is_active: boolean
@@ -56,6 +57,8 @@ export interface CreateSubUserInput {
   email: string
   password: string
   name?: string
+  role?: UserRole // sub_pos_user (default), booker, or salesman
+  booker_id?: string | null // required for booker/salesman roles
   privileges: UserPrivileges
 }
 
@@ -63,6 +66,8 @@ export interface UpdateSubUserInput {
   email?: string
   password?: string
   name?: string
+  role?: UserRole
+  booker_id?: string | null
   privileges?: UserPrivileges
   is_active?: boolean
 }

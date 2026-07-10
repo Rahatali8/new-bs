@@ -5,6 +5,7 @@ import { redirect } from "next/navigation"
 import { headers } from "next/headers"
 import { authenticateUser } from "@/lib/db/users"
 import { setUserSession, clearUserSession } from "@/lib/auth/session"
+import { roleHomePath } from "@/lib/auth/roles"
 import { checkRateLimit, recordFailedLoginAttempt } from "@/lib/auth/rate-limit"
 
 export async function signIn(formData: FormData) {
@@ -50,8 +51,9 @@ export async function signIn(formData: FormData) {
   // Set user session
   await setUserSession(user)
 
-  revalidatePath("/dashboard")
-  redirect("/dashboard")
+  const home = roleHomePath(user.role)
+  revalidatePath(home)
+  redirect(home)
 }
 
 export async function signOut() {

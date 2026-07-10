@@ -2,21 +2,21 @@
 
 import { cookies } from "next/headers"
 import { Admin } from "@/lib/types/admin"
+import { signSessionValue, verifySessionValue } from "@/lib/auth/signed-cookie"
 
 const ADMIN_SESSION_COOKIE_NAME = "admin_session"
 const ADMIN_SESSION_MAX_AGE = 60 * 60 * 24 * 7 // 7 days
 
-// Store admin session in cookie
+// Store admin session in cookie (HMAC-signed so it can't be forged)
 export async function setAdminSession(admin: Admin) {
   const cookieStore = await cookies()
-  
-  // Store admin ID and basic info in cookie
+
   const sessionData = {
     adminId: admin.id,
     email: admin.email,
   }
 
-  cookieStore.set(ADMIN_SESSION_COOKIE_NAME, JSON.stringify(sessionData), {
+  cookieStore.set(ADMIN_SESSION_COOKIE_NAME, signSessionValue(sessionData), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -35,8 +35,13 @@ export async function getAdminSession(): Promise<Admin | null> {
   }
 
   try {
-    const sessionData = JSON.parse(sessionCookie.value)
-    
+    // Reject tampered or unsigned (legacy) cookies
+    const sessionData = verifySessionValue<{ adminId: string }>(sessionCookie.value)
+    if (!sessionData?.adminId) {
+      await clearAdminSession()
+      return null
+    }
+
     // Fetch full admin data from database to ensure it's still valid
     const { getAdminById } = await import("@/lib/db/admins")
     const admin = await getAdminById(sessionData.adminId)

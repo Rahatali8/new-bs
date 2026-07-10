@@ -102,6 +102,27 @@ export async function createSubUser(
     return { success: false, error: "Email already exists" }
   }
 
+  const role = input.role ?? "sub_pos_user"
+  if (!["sub_pos_user", "booker", "salesman"].includes(role)) {
+    return { success: false, error: "Invalid role" }
+  }
+
+  // Booker/salesman logins must be linked to a booker entity owned by this admin
+  if (role === "booker" || role === "salesman") {
+    if (!input.booker_id) {
+      return { success: false, error: "A booker must be selected for this role" }
+    }
+    const { data: bookerRow } = await supabase
+      .from("bookers")
+      .select("id")
+      .eq("id", input.booker_id)
+      .eq("user_id", parentUserId)
+      .single()
+    if (!bookerRow) {
+      return { success: false, error: "Booker not found" }
+    }
+  }
+
   // Hash password
   const passwordHash = await hashPassword(input.password)
 
@@ -111,8 +132,9 @@ export async function createSubUser(
     .insert({
       email: input.email.toLowerCase().trim(),
       password_hash: passwordHash,
-      role: "sub_pos_user",
+      role,
       parent_user_id: parentUserId,
+      booker_id: role === "booker" || role === "salesman" ? input.booker_id : null,
       name: input.name || null,
       privileges: input.privileges,
       is_active: true,
@@ -170,9 +192,37 @@ export async function updateSubUser(
   if (input.privileges !== undefined) {
     updateData.privileges = input.privileges
   }
-  
+
   if (input.is_active !== undefined) {
     updateData.is_active = input.is_active
+  }
+
+  if (input.role !== undefined) {
+    if (!["sub_pos_user", "booker", "salesman"].includes(input.role)) {
+      return { success: false, error: "Invalid role" }
+    }
+    updateData.role = input.role
+  }
+
+  const effectiveRole = input.role ?? userToUpdate.role
+  if (effectiveRole === "booker" || effectiveRole === "salesman") {
+    const bookerId = input.booker_id !== undefined ? input.booker_id : userToUpdate.booker_id
+    if (!bookerId) {
+      return { success: false, error: "A booker must be selected for this role" }
+    }
+    const { data: bookerRow } = await supabase
+      .from("bookers")
+      .select("id")
+      .eq("id", bookerId)
+      .eq("user_id", parentUserId)
+      .single()
+    if (!bookerRow) {
+      return { success: false, error: "Booker not found" }
+    }
+    updateData.booker_id = bookerId
+  } else if (input.role !== undefined) {
+    // Role changed back to generic sub-user: unlink booker
+    updateData.booker_id = null
   }
 
   // Update user

@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
-import { PosUser } from "@/lib/types/user"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { PosUser, UserRole } from "@/lib/types/user"
 import { createUser, updateUser } from "@/app/(app)/users/actions"
 import { toast } from "sonner"
 import {
@@ -28,6 +29,7 @@ interface UserDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   user: PosUser | null
+  bookers?: Array<{ id: string; name: string; phone: string }>
   onUserSaved: (user: PosUser) => void
 }
 
@@ -35,6 +37,8 @@ interface UserFormData {
   email: string
   password: string
   name: string
+  role: UserRole
+  booker_id: string
   dashboard: boolean
   parties: boolean
   inventory: boolean
@@ -140,7 +144,7 @@ function getGroupPrivilegeKeys(group: (typeof PRIVILEGE_GROUPS)[0]): (keyof User
   return group.subPrivileges.map((s) => s.key)
 }
 
-export function UserDialog({ open, onOpenChange, user, onUserSaved }: UserDialogProps) {
+export function UserDialog({ open, onOpenChange, user, bookers = [], onUserSaved }: UserDialogProps) {
   const isEditing = !!user
   const [isPending, startTransition] = useTransition()
 
@@ -149,6 +153,8 @@ export function UserDialog({ open, onOpenChange, user, onUserSaved }: UserDialog
       email: "",
       password: "",
       name: "",
+      role: "sub_pos_user",
+      booker_id: "",
       dashboard: false,
       parties: false,
       inventory: false,
@@ -173,6 +179,8 @@ export function UserDialog({ open, onOpenChange, user, onUserSaved }: UserDialog
         email: user?.email || "",
         password: "",
         name: user?.name || "",
+        role: user?.role && user.role !== "pos_user" ? user.role : "sub_pos_user",
+        booker_id: user?.booker_id || "",
         dashboard: user?.privileges.dashboard || false,
         parties: user?.privileges.parties || false,
         inventory: user?.privileges.inventory || false,
@@ -211,11 +219,18 @@ export function UserDialog({ open, onOpenChange, user, onUserSaved }: UserDialog
   }
 
   const onSubmit = async (data: UserFormData) => {
+    if ((data.role === "booker" || data.role === "salesman") && !data.booker_id) {
+      toast.error("Please select a booker for this role")
+      return
+    }
+
     startTransition(async () => {
       const formData = new FormData()
       formData.append("email", data.email)
       if (data.password) formData.append("password", data.password)
       formData.append("name", data.name)
+      formData.append("role", data.role)
+      formData.append("booker_id", data.role === "booker" || data.role === "salesman" ? data.booker_id : "")
       formData.append("privilege_dashboard", data.dashboard ? "on" : "off")
       formData.append("privilege_parties", data.parties ? "on" : "off")
       formData.append("privilege_inventory", data.inventory ? "on" : "off")
@@ -282,7 +297,56 @@ export function UserDialog({ open, onOpenChange, user, onUserSaved }: UserDialog
             />
           </div>
 
+          {/* Role */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Role *</Label>
+              <Select value={watch("role")} onValueChange={(val) => setValue("role", val as UserRole)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sub_pos_user">Staff (module privileges)</SelectItem>
+                  <SelectItem value="booker">Booker (sales & credit portal)</SelectItem>
+                  <SelectItem value="salesman">Salesman (recovery portal)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {(watch("role") === "booker" || watch("role") === "salesman") && (
+              <div className="space-y-2">
+                <Label>Linked Booker *</Label>
+                <Select value={watch("booker_id")} onValueChange={(val) => setValue("booker_id", val)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select booker" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {bookers.length === 0 ? (
+                      <SelectItem value="none" disabled>
+                        No bookers — create one first
+                      </SelectItem>
+                    ) : (
+                      bookers.map((b) => (
+                        <SelectItem key={b.id} value={b.id}>
+                          {b.name} ({b.phone})
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+
+          {watch("role") !== "sub_pos_user" && (
+            <p className="text-xs text-muted-foreground rounded-lg border bg-muted/30 px-3 py-2">
+              {watch("role") === "booker"
+                ? "Booker logins get their own portal: create sales and track their parties' udhaar. Module privileges below don't apply."
+                : "Salesman logins get a recovery portal for the linked booker's parties: view outstanding udhaar and record collections. Module privileges below don't apply."}
+            </p>
+          )}
+
           {/* Privileges */}
+          {watch("role") === "sub_pos_user" && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label className="text-sm font-semibold">Module Privileges</Label>
@@ -354,6 +418,7 @@ export function UserDialog({ open, onOpenChange, user, onUserSaved }: UserDialog
               })}
             </div>
           </div>
+          )}
 
           {/* Active toggle */}
           {isEditing && (

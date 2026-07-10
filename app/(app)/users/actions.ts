@@ -2,8 +2,14 @@
 
 import { revalidatePath } from "next/cache"
 import { getSessionOrRedirect } from "@/lib/auth"
+import { createClient } from "@/lib/supabase/server"
 import { createSubUser, updateSubUser, deleteSubUser, getSubUsers } from "@/lib/db/users"
-import { CreateSubUserInput, UpdateSubUserInput } from "@/lib/types/user"
+import { CreateSubUserInput, UpdateSubUserInput, UserRole } from "@/lib/types/user"
+
+function parseRole(formData: FormData): UserRole {
+  const role = String(formData.get("role") || "sub_pos_user")
+  return (["sub_pos_user", "booker", "salesman"].includes(role) ? role : "sub_pos_user") as UserRole
+}
 
 export async function createUser(formData: FormData) {
   const currentUser = await getSessionOrRedirect()
@@ -38,10 +44,15 @@ export async function createUser(formData: FormData) {
     return { success: false, error: "Email and password are required" }
   }
 
+  const role = parseRole(formData)
+  const bookerId = String(formData.get("booker_id") || "") || null
+
   const input: CreateSubUserInput = {
     email,
     password,
     name: name || undefined,
+    role,
+    booker_id: bookerId,
     privileges,
   }
 
@@ -88,6 +99,8 @@ export async function updateUser(userId: string, formData: FormData) {
     email,
     password,
     name,
+    role: parseRole(formData),
+    booker_id: String(formData.get("booker_id") || "") || null,
     privileges,
     is_active,
   }
@@ -125,4 +138,21 @@ export async function fetchUsers() {
   }
 
   return getSubUsers(currentUser.id)
+}
+
+export async function fetchBookers() {
+  const currentUser = await getSessionOrRedirect()
+
+  if (currentUser.role !== "pos_user") {
+    return []
+  }
+
+  const supabase = createClient()
+  const { data } = await supabase
+    .from("bookers")
+    .select("id, name, phone")
+    .eq("user_id", currentUser.effectiveUserId)
+    .order("name")
+
+  return (data ?? []) as Array<{ id: string; name: string; phone: string }>
 }

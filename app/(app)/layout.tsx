@@ -1,7 +1,9 @@
 import type { ReactNode } from "react"
+import { redirect } from "next/navigation"
 import { Header } from "@/components/header"
 import { Sidebar } from "@/components/sidebar"
 import { getSessionOrRedirect } from "@/lib/auth"
+import { roleHomePath } from "@/lib/auth/roles"
 import { BarcodeScanToPOS } from "@/components/barcode-scan-to-pos"
 import { Toaster } from "@/components/ui/sonner"
 import { BackupReminder } from "@/components/backup-reminder"
@@ -11,6 +13,12 @@ import { ThemeSync } from "@/components/theme-sync"
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await getSessionOrRedirect("/login")
+
+  // Booker/salesman logins live in their own portals
+  if (user.role === "booker" || user.role === "salesman") {
+    redirect(roleHomePath(user.role))
+  }
+
   const businessName = user.name || "InvoSync"
 
   const [{ backup_due }, settings] = await Promise.all([getBackupStatus(), getAllSettings()])

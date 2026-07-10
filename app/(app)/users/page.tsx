@@ -1,5 +1,5 @@
 import { getSessionOrRedirect } from "@/lib/auth"
-import { fetchUsers } from "./actions"
+import { fetchUsers, fetchBookers } from "./actions"
 import { UsersList } from "@/components/users-list"
 
 export default async function UsersPage() {
@@ -17,7 +17,7 @@ export default async function UsersPage() {
     )
   }
 
-  const users = await fetchUsers()
+  const [users, bookers] = await Promise.all([fetchUsers(), fetchBookers()])
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -28,7 +28,7 @@ export default async function UsersPage() {
         </div>
       </div>
 
-      <UsersList initialUsers={users} />
+      <UsersList initialUsers={users} bookers={bookers} />
     </div>
   )
 }

@@ -14,6 +14,12 @@ export async function createPOSSale(payload: CreatePOSSaleInput) {
     return { error: "Customer and at least one line item are required", data: null }
   }
 
+  // Salesman logins cannot create sales; booker logins always sell under their own booker
+  if (currentUser.role === "salesman") {
+    return { error: "Salesman accounts cannot create sales", data: null }
+  }
+  const effectiveBookerId = currentUser.role === "booker" ? currentUser.booker_id ?? null : payload.bookerId || null
+
   const isExplicitCredit = payload.status === "Credit"
   const isExplicitDraft = payload.status === "Draft"
   const hasPayment = payload.payments?.some((p) => p.amount > 0) ?? false
@@ -82,7 +88,8 @@ export async function createPOSSale(payload: CreatePOSSaleInput) {
     .from("sales_invoices")
     .insert({
       party_id: payload.partyId,
-      booker_id: payload.bookerId || null,
+      booker_id: effectiveBookerId,
+      created_by: currentUser.id,
       subtotal,
       discount,
       tax,
@@ -122,6 +129,8 @@ export async function createPOSSale(payload: CreatePOSSaleInput) {
         method: p.method,
         reference: p.reference ?? null,
         user_id: currentUser.effectiveUserId,
+        booker_id: effectiveBookerId,
+        collected_by: currentUser.id,
       }))
 
     if (paymentRows.length > 0) {
