@@ -529,7 +529,7 @@ export function POSNewSaleForm({ parties, bookers = [], lockedBookerId, inventor
       const customerName = localParties.find((p) => p.id === partyId)?.name ?? ""
       setItems([])
       setPartyId("")
-      setBookerId("")
+      setBookerId(lockedBookerId ?? "")
       setCustomerQuery("")
       if (effectiveSaleMode === "sale") {
         setCompletedTotal(computed.total)
