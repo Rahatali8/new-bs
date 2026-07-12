@@ -21,6 +21,7 @@ type CartItem = { itemId: string; quantity: number; unitPrice: number; priceType
 interface POSNewSaleFormProps {
   parties: PartyOption[]
   bookers?: BookerOption[]
+  lockedBookerId?: string
   inventory: InventoryOption[]
   initialItemId?: string | null
   autoAdd?: boolean
@@ -34,9 +35,9 @@ interface POSNewSaleFormProps {
   }
 }
 
-export function POSNewSaleForm({ parties, bookers = [], inventory, initialItemId, autoAdd, initialSale, walkInPartyId, isOwner }: POSNewSaleFormProps) {
+export function POSNewSaleForm({ parties, bookers = [], lockedBookerId, inventory, initialItemId, autoAdd, initialSale, walkInPartyId, isOwner }: POSNewSaleFormProps) {
   const [localParties, setLocalParties] = useState<PartyOption[]>(parties)
-  const [bookerId, setBookerId] = useState("")
+  const [bookerId, setBookerId] = useState(lockedBookerId ?? "")
   const [newCustomerOpen, setNewCustomerOpen] = useState(false)
   const [newCustName, setNewCustName] = useState("")
   const [newCustPhone, setNewCustPhone] = useState("")
@@ -754,21 +755,27 @@ export function POSNewSaleForm({ parties, bookers = [], inventory, initialItemId
               />
             )}
           </div>
-          {partyId && partyId !== walkInPartyId && bookers.length > 0 && (
+          {partyId && partyId !== walkInPartyId && (lockedBookerId || bookers.length > 0) && (
             <div className="space-y-2">
               <Label>Booker</Label>
-              <select
-                value={bookerId}
-                onChange={(e) => setBookerId(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              >
-                <option value="">-- Select Booker (Optional) --</option>
-                {bookers.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
+              {lockedBookerId ? (
+                <div className="h-10 px-3 flex items-center rounded-md border bg-muted/50 text-sm font-medium">
+                  {bookers.find((b) => b.id === lockedBookerId)?.name ?? "—"}
+                </div>
+              ) : (
+                <select
+                  value={bookerId}
+                  onChange={(e) => setBookerId(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <option value="">-- Select Booker (Optional) --</option>
+                  {bookers.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           )}
         </div>

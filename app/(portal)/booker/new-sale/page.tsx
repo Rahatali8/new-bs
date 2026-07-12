@@ -34,6 +34,7 @@ export default async function BookerNewSalePage() {
       <POSNewSaleForm
         parties={(parties || []).map((p) => ({ id: (p as { id: string }).id, name: (p as { name?: string }).name || "", address: (p as { address?: string | null }).address ?? null }))}
         bookers={booker ? [{ id: booker.id, name: booker.name || "", phone: booker.phone || "" }] : []}
+        lockedBookerId={booker?.id}
         inventory={normalizedInventory}
         initialItemId={null}
         autoAdd={false}
