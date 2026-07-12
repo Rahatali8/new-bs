@@ -20,8 +20,10 @@ export default async function SalesmanLayout({ children }: { children: ReactNode
         userName={user.name || user.email}
         nav={[{ href: "/salesman", label: "Dashboard" }]}
       />
-      <div className="lg:ml-72">
-        <main className="p-3 sm:p-4 md:p-6 lg:p-8 space-y-4 sm:space-y-6 max-w-5xl">{children}</main>
+      <div className="flex flex-col min-h-screen lg:ml-72">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8">
+          <div className="max-w-6xl mx-auto w-full space-y-4 sm:space-y-6">{children}</div>
+        </main>
       </div>
       <Toaster />
     </div>
