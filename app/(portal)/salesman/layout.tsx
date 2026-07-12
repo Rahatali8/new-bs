@@ -20,7 +20,9 @@ export default async function SalesmanLayout({ children }: { children: ReactNode
         userName={user.name || user.email}
         nav={[{ href: "/salesman", label: "Dashboard" }]}
       />
-      <main className="max-w-5xl mx-auto p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">{children}</main>
+      <div className="lg:ml-72">
+        <main className="p-3 sm:p-4 md:p-6 lg:p-8 space-y-4 sm:space-y-6 max-w-5xl">{children}</main>
+      </div>
       <Toaster />
     </div>
   )
