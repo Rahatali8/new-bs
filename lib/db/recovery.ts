@@ -138,6 +138,100 @@ export async function getBookerLedger(bookerId: string): Promise<BookerLedger | 
   return { booker, parties, totals, todaySales, todayCollected, recentInvoices }
 }
 
+export interface RecoverySheetInvoice {
+  invoiceNumber: string
+  partyName: string
+  phone: string | null
+  date: string
+  total: number
+  paid: number
+  outstanding: number
+}
+
+export interface BookerRecoverySheet {
+  booker: { id: string; name: string; phone: string | null }
+  invoices: RecoverySheetInvoice[]
+  totalOutstanding: number
+}
+
+// Invoice-level outstanding data for printing a physical recovery sheet
+export async function getBookerRecoverySheet(bookerId: string): Promise<BookerRecoverySheet | null> {
+  const currentUser = await getSessionOrRedirect()
+  const supabase = createClient()
+  const eff = currentUser.effectiveUserId
+
+  if ((currentUser.role === "booker" || currentUser.role === "salesman") && currentUser.booker_id !== bookerId) {
+    return null
+  }
+
+  const { data: booker } = await supabase
+    .from("bookers")
+    .select("id, name, phone")
+    .eq("id", bookerId)
+    .eq("user_id", eff)
+    .single()
+
+  if (!booker) return null
+
+  const { data: invoices } = await supabase
+    .from("sales_invoices")
+    .select("id, party_id, total, status, created_at")
+    .eq("user_id", eff)
+    .eq("booker_id", bookerId)
+    .neq("status", "Cancelled")
+    .order("created_at", { ascending: false })
+
+  const invoiceList = invoices ?? []
+  const invoiceIds = invoiceList.map((i) => i.id)
+
+  let payments: Array<{ invoice_id: string; amount: number }> = []
+  if (invoiceIds.length > 0) {
+    const { data } = await supabase
+      .from("payments")
+      .select("invoice_id, amount")
+      .in("invoice_id", invoiceIds)
+    payments = data ?? []
+  }
+
+  const paidByInvoice = new Map<string, number>()
+  for (const p of payments) {
+    paidByInvoice.set(p.invoice_id, (paidByInvoice.get(p.invoice_id) ?? 0) + Number(p.amount || 0))
+  }
+
+  const partyIds = [...new Set(invoiceList.map((i) => i.party_id))]
+  let partyRows: Array<{ id: string; name: string; phone: string | null }> = []
+  if (partyIds.length > 0) {
+    const { data } = await supabase.from("parties").select("id, name, phone").in("id", partyIds)
+    partyRows = data ?? []
+  }
+  const partyById = new Map(partyRows.map((p) => [p.id, p]))
+
+  const sheetInvoices: RecoverySheetInvoice[] = invoiceList
+    .map((inv) => {
+      const paid = paidByInvoice.get(inv.id) ?? 0
+      const total = Number(inv.total || 0)
+      const outstanding = total - paid
+      const party = partyById.get(inv.party_id)
+      return {
+        invoiceNumber: inv.id.substring(0, 8).toUpperCase(),
+        partyName: party?.name ?? "Unknown",
+        phone: party?.phone ?? null,
+        date: inv.created_at,
+        total,
+        paid,
+        outstanding,
+      }
+    })
+    .filter((inv) => inv.outstanding > 0)
+    .sort((a, b) => b.outstanding - a.outstanding)
+
+  return {
+    booker,
+    invoices: sheetInvoices,
+    totalOutstanding: sheetInvoices.reduce((sum, inv) => sum + inv.outstanding, 0),
+  }
+}
+
 export interface CollectionEntry {
   id: string
   amount: number

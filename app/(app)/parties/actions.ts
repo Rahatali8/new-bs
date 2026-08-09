@@ -7,26 +7,48 @@ import { getSessionOrRedirect } from "@/lib/auth"
 export async function createParty(formData: FormData) {
   const currentUser = await getSessionOrRedirect()
   const supabase = createClient()
+  const eff = currentUser.effectiveUserId
 
   const payload = {
     name: String(formData.get("name") || "").trim(),
     phone: String(formData.get("phone") || "").trim(),
     type: String(formData.get("type") || "Customer"),
     address: String(formData.get("address") || "").trim() || null,
-    user_id: currentUser.effectiveUserId,
+    user_id: eff,
   }
 
   if (!payload.name || !payload.phone) {
     return { error: "Name and phone are required" }
   }
 
-  const { error } = await supabase.from("parties").insert(payload)
+  const { data: party, error } = await supabase.from("parties").insert(payload).select("id").single()
   if (error) {
     return { error: error.message }
   }
 
+  // Create opening balance invoice if specified
+  const hasBalance = formData.get("has_starting_balance") === "true"
+  const rawBalance = parseFloat(String(formData.get("starting_balance") || "0"))
+  if (hasBalance && rawBalance > 0 && party?.id) {
+    const bookerId = String(formData.get("starting_booker_id") || "").trim() || null
+    const { error: invError } = await supabase.from("sales_invoices").insert({
+      user_id: eff,
+      party_id: party.id,
+      booker_id: bookerId,
+      subtotal: rawBalance,
+      tax: 0,
+      total: rawBalance,
+      status: "Credit",
+      source: "pos",
+    })
+    if (invError) {
+      return { error: `Party saved but opening balance failed: ${invError.message}` }
+    }
+  }
+
   revalidatePath("/parties")
   revalidatePath("/parties/add")
+  revalidatePath("/pos/payments")
   return { error: null }
 }
 

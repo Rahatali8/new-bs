@@ -4,9 +4,18 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { createClient } from "@/lib/supabase/server"
+import { getSessionOrRedirect } from "@/lib/auth"
 
 export default async function AddPartyPage() {
-  await requirePrivilege("parties")
+  const currentUser = await requirePrivilege("parties")
+  const supabase = createClient()
+
+  const { data: bookers } = await supabase
+    .from("bookers")
+    .select("id, name, phone")
+    .eq("user_id", currentUser.effectiveUserId)
+    .order("name")
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -27,7 +36,7 @@ export default async function AddPartyPage() {
           <CardTitle className="text-base sm:text-lg">Party Information</CardTitle>
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
-          <AddPartyForm />
+          <AddPartyForm bookers={bookers ?? []} />
         </CardContent>
       </Card>
     </div>

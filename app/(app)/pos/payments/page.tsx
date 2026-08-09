@@ -9,6 +9,7 @@ import { CustomerPaymentDialog } from "@/components/customer-payment-dialog"
 import { CurrencyDisplay } from "@/components/currency-display"
 import { DeleteCustomerPaymentButton } from "@/components/delete-customer-payment-button"
 import { ExportButtons } from "@/components/export-buttons"
+import { RecoverySheetButton } from "@/components/recovery-sheet-button"
 
 const EMPTY_RECOVERY: RecoverySummary = {
   todayRecovery: 0,
@@ -65,17 +66,26 @@ export default async function CustomerPaymentsPage() {
           <h1 className="text-xl sm:text-2xl font-semibold text-foreground">Customer Payments</h1>
           <p className="text-xs sm:text-sm text-muted-foreground">Manage payments for POS sales invoices.</p>
         </div>
-        <CustomerPaymentDialog
-          sales={unpaidSales.map((s) => ({
-            id: s.id,
-            invoiceNumber: s.invoiceNumber,
-            customerName: s.customerName,
-            total: Number(s.total || 0),
-            status: s.status || "Draft",
-            paid: s.paid,
-            balance: s.balance,
-          }))}
-        />
+        <div className="flex items-center gap-2 flex-wrap">
+          <RecoverySheetButton
+            bookers={recovery.bookers.map((b) => ({
+              bookerId: b.bookerId,
+              name: b.name,
+              phone: b.phone,
+            }))}
+          />
+          <CustomerPaymentDialog
+            sales={unpaidSales.map((s) => ({
+              id: s.id,
+              invoiceNumber: s.invoiceNumber,
+              customerName: s.customerName,
+              total: Number(s.total || 0),
+              status: s.status || "Draft",
+              paid: s.paid,
+              balance: s.balance,
+            }))}
+          />
+        </div>
       </div>
 
       {/* Summary Cards */}
