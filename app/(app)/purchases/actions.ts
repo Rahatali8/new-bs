@@ -44,7 +44,7 @@ export async function createPurchase(payload: {
     return { error: "One or more items not found" }
   }
 
-  const taxRate = payload.taxRate || 18
+  const taxRate = payload.taxRate ?? 18
   const subtotal = payload.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
   const tax = subtotal * (taxRate / 100)
   const total = subtotal + tax
@@ -304,7 +304,7 @@ export async function updatePurchase(
     }
   }
 
-  const taxRate = payload.taxRate || 18
+  const taxRate = payload.taxRate ?? 18
   const subtotal = payload.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
   const tax = subtotal * (taxRate / 100)
   const total = subtotal + tax
