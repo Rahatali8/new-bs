@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Upload, X, FileImage } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
@@ -23,6 +24,8 @@ export default function AddPartyForm({ bookers = [] }: { bookers?: BookerOption[
   const prevPendingRef = useRef(false)
   const [hasBalance, setHasBalance] = useState(false)
   const [partyType, setPartyType] = useState("Customer")
+  const [proofFile, setProofFile] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [state, formAction, pending] = useActionState(
     async (_prev: typeof initialState, formData: FormData) => {
@@ -128,6 +131,44 @@ export default function AddPartyForm({ bookers = [] }: { bookers?: BookerOption[
                   </p>
                 </div>
               )}
+
+              {/* Bill proof upload */}
+              <div className="space-y-2">
+                <Label>Bill / Proof Image (optional)</Label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  name="proof_file"
+                  accept="image/*,.pdf"
+                  className="hidden"
+                  onChange={(e) => setProofFile(e.target.files?.[0] ?? null)}
+                />
+                {proofFile ? (
+                  <div className="flex items-center gap-2 p-3 rounded-md border border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-800">
+                    <FileImage className="w-4 h-4 text-green-600 shrink-0" />
+                    <span className="text-sm text-green-700 dark:text-green-400 truncate flex-1">{proofFile.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => { setProofFile(null); if (fileInputRef.current) fileInputRef.current.value = "" }}
+                      className="text-green-600 hover:text-red-500 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full flex items-center justify-center gap-2 p-3 rounded-md border border-dashed border-border hover:border-primary hover:bg-muted/50 transition-colors text-sm text-muted-foreground"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Click to upload bill image or PDF
+                  </button>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Upload original bill as proof — helps if shopkeeper requests verification later.
+                </p>
+              </div>
             </>
           )}
         </div>

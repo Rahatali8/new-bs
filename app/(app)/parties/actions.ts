@@ -31,18 +31,41 @@ export async function createParty(formData: FormData) {
   const rawBalance = parseFloat(String(formData.get("starting_balance") || "0"))
   if (hasBalance && rawBalance > 0 && party?.id) {
     const bookerId = String(formData.get("starting_booker_id") || "").trim() || null
-    const { error: invError } = await supabase.from("sales_invoices").insert({
-      user_id: eff,
-      party_id: party.id,
-      booker_id: bookerId,
-      subtotal: rawBalance,
-      tax: 0,
-      total: rawBalance,
-      status: "Credit",
-      source: "pos",
-    })
+    const { data: inv, error: invError } = await supabase
+      .from("sales_invoices")
+      .insert({
+        user_id: eff,
+        party_id: party.id,
+        booker_id: bookerId,
+        subtotal: rawBalance,
+        tax: 0,
+        total: rawBalance,
+        status: "Credit",
+        source: "pos",
+      })
+      .select("id")
+      .single()
     if (invError) {
       return { error: `Party saved but opening balance failed: ${invError.message}` }
+    }
+
+    // Upload proof file if provided
+    const proofFile = formData.get("proof_file") as File | null
+    if (proofFile && proofFile.size > 0 && inv?.id) {
+      try {
+        const bytes = await proofFile.arrayBuffer()
+        const ext = proofFile.name.split(".").pop() || "jpg"
+        const path = `${eff}/${inv.id}.${ext}`
+        const { error: upErr } = await supabase.storage
+          .from("balance-proofs")
+          .upload(path, Buffer.from(bytes), { contentType: proofFile.type, upsert: true })
+        if (!upErr) {
+          const { data: urlData } = supabase.storage.from("balance-proofs").getPublicUrl(path)
+          await supabase.from("sales_invoices").update({ proof_url: urlData.publicUrl }).eq("id", inv.id)
+        }
+      } catch {
+        // Proof upload failed — party and balance still saved
+      }
     }
   }
 
