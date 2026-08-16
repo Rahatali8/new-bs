@@ -40,20 +40,21 @@ export function PurchaseForm({
   const isEdit = !!purchaseId
   const [localInventory, setLocalInventory] = useState<InventoryOption[]>(initialInventory)
   const [partyId, setPartyId] = useState(initialPartyId || "")
-  const [items, setItems] = useState<Array<{ itemId: string; quantity: number; unitPrice?: number }>>(() => {
+  const [items, setItems] = useState<Array<{ itemId: string; quantity: number; unitPrice?: number; discountPct?: number }>>(() => {
     if (initialItems) {
       return initialItems.map((item) => {
         const invItem = initialInventory.find((i) => i.id === item.itemId)
         return {
           ...item,
           unitPrice: (item as any).unitPrice || invItem?.unitPrice || 0,
+          discountPct: 0,
         }
       })
     }
     return []
   })
   const [status, setStatus] = useState(initialStatus || "Draft")
-  const [discountPercent, setDiscountPercent] = useState(0)
+  const [itemDiscount, setItemDiscount] = useState(0)
   const [selectedItem, setSelectedItem] = useState("")
   const [quantity, setQuantity] = useState(1)
   const [unitPrice, setUnitPrice] = useState(0)
@@ -154,21 +155,21 @@ export function PurchaseForm({
     const existingItemIndex = items.findIndex((item) => item.itemId === selectedItem)
     const totalQuantity = existingItemIndex >= 0 ? items[existingItemIndex].quantity + quantity : quantity
 
-    // If item already exists, update quantity; otherwise add new item
     if (existingItemIndex >= 0) {
       setItems((prev) =>
         prev.map((item, idx) =>
-          idx === existingItemIndex ? { ...item, quantity: totalQuantity, unitPrice } : item,
+          idx === existingItemIndex ? { ...item, quantity: totalQuantity, unitPrice, discountPct: itemDiscount } : item,
         ),
       )
     } else {
-      setItems((prev) => [...prev, { itemId: selectedItem, quantity, unitPrice }])
+      setItems((prev) => [...prev, { itemId: selectedItem, quantity, unitPrice, discountPct: itemDiscount }])
     }
 
     setSelectedItem("")
     setItemSearch("")
     setQuantity(1)
     setUnitPrice(0)
+    setItemDiscount(0)
     toast.success("Item added to purchase")
   }
 
@@ -178,18 +179,26 @@ export function PurchaseForm({
     const detailed = items.map((line) => {
       const inv = localInventory.find((i) => i.id === line.itemId)
       const price = line.unitPrice || inv?.unitPrice || 0
+      const disc = line.discountPct || 0
+      const discountedPrice = price * (1 - disc / 100)
+      const amount = discountedPrice * line.quantity
+      const originalAmount = price * line.quantity
       return {
         ...line,
         name: inv?.name || "",
         unitPrice: price,
-        amount: price * line.quantity,
+        discountPct: disc,
+        discountedPrice,
+        amount,
+        originalAmount,
+        discountAmount: originalAmount - amount,
       }
     })
-    const subtotal = detailed.reduce((sum, line) => sum + line.amount, 0)
-    const discountAmount = subtotal * (discountPercent / 100)
-    const total = subtotal - discountAmount
-    return { detailed, subtotal, discountAmount, total }
-  }, [localInventory, items, discountPercent])
+    const subtotal = detailed.reduce((sum, line) => sum + line.originalAmount, 0)
+    const totalDiscount = detailed.reduce((sum, line) => sum + line.discountAmount, 0)
+    const total = subtotal - totalDiscount
+    return { detailed, subtotal, totalDiscount, total }
+  }, [localInventory, items])
 
   const handleCreateNewVendor = async () => {
     if (!newVendorName.trim() || !newVendorPhone.trim()) {
@@ -245,12 +254,12 @@ export function PurchaseForm({
       const payload: PurchaseItemInput[] = computed.detailed.map((line) => ({
         itemId: line.itemId,
         quantity: line.quantity,
-        unitPrice: line.unitPrice,
+        unitPrice: line.discountedPrice,
       }))
 
       const result = isEdit
-        ? await updatePurchase(purchaseId, { partyId, items: payload, status, discountRate: discountPercent })
-        : await createPurchase({ partyId, items: payload, discountRate: discountPercent, status })
+        ? await updatePurchase(purchaseId, { partyId, items: payload, status })
+        : await createPurchase({ partyId, items: payload, status })
 
       if (result?.error) {
         setMessage({ error: result.error })
@@ -335,7 +344,7 @@ export function PurchaseForm({
 
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-muted-foreground">Line items</h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-secondary p-4 rounded-lg">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 bg-secondary p-4 rounded-lg">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label>Item</Label>
@@ -400,6 +409,19 @@ export function PurchaseForm({
                   onChange={(e) => setUnitPrice(Number(e.target.value) || 0)}
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="itemDiscount">Disc %</Label>
+                <Input
+                  id="itemDiscount"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={itemDiscount || ""}
+                  placeholder="0"
+                  onChange={(e) => setItemDiscount(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+                />
+              </div>
               <div className="flex items-end">
                 <Button type="button" className="w-full" onClick={addLine} disabled={!selectedItem || unitPrice <= 0}>
                   <Plus className="w-4 h-4 mr-2" />
@@ -416,6 +438,7 @@ export function PurchaseForm({
                       <th className="px-4 py-3 text-left">Item</th>
                       <th className="px-4 py-3 text-left">Qty</th>
                       <th className="px-4 py-3 text-left">Cost Price</th>
+                      <th className="px-4 py-3 text-center w-24">Disc %</th>
                       <th className="px-4 py-3 text-left">Amount</th>
                       <th className="px-4 py-3 text-center">Action</th>
                     </tr>
@@ -426,7 +449,31 @@ export function PurchaseForm({
                         <td className="px-4 py-3 font-medium">{line.name}</td>
                         <td className="px-4 py-3">{line.quantity}</td>
                         <td className="px-4 py-3">{formatCurrency(line.unitPrice)}</td>
-                        <td className="px-4 py-3 font-semibold">{formatCurrency(line.amount)}</td>
+                        <td className="px-4 py-2 text-center w-24">
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            step={0.1}
+                            value={line.discountPct || ""}
+                            placeholder="0"
+                            onChange={(e) => {
+                              const val = Math.min(100, Math.max(0, Number(e.target.value) || 0))
+                              setItems((prev) =>
+                                prev.map((item, i) => i === idx ? { ...item, discountPct: val } : item)
+                              )
+                            }}
+                            className="w-16 h-7 px-1.5 text-xs text-center rounded border border-input bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                          />
+                        </td>
+                        <td className="px-4 py-3 font-semibold">
+                          {formatCurrency(line.amount)}
+                          {line.discountPct > 0 && (
+                            <span className="block text-xs font-normal text-green-600">
+                              −{formatCurrency(line.discountAmount)}
+                            </span>
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-center">
                           <Button variant="ghost" size="icon" onClick={() => removeLine(idx)}>
                             <Trash2 className="w-4 h-4 text-red-500" />
@@ -441,38 +488,20 @@ export function PurchaseForm({
           </div>
 
           {computed.detailed.length > 0 && (
-            <div className="bg-secondary rounded-lg p-4 space-y-3 max-w-sm ml-auto">
-              {/* Discount % input */}
-              <div className="flex items-center gap-3">
-                <label className="text-sm text-muted-foreground whitespace-nowrap">Vendor Discount (%)</label>
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={0.1}
-                  value={discountPercent || ""}
-                  onChange={(e) => setDiscountPercent(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
-                  placeholder="0"
-                  className="w-24 h-8 px-2 text-sm rounded border border-input bg-background text-right focus:outline-none focus:ring-2 focus:ring-ring"
-                />
+            <div className="bg-secondary rounded-lg p-4 space-y-1.5 max-w-sm ml-auto">
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Subtotal</span>
+                <span>{formatCurrency(computed.subtotal)}</span>
               </div>
-
-              {/* Summary breakdown */}
-              <div className="space-y-1.5 border-t pt-2">
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>Subtotal</span>
-                  <span>{formatCurrency(computed.subtotal)}</span>
+              {computed.totalDiscount > 0 && (
+                <div className="flex justify-between text-sm text-green-600">
+                  <span>Total Discount</span>
+                  <span>− {formatCurrency(computed.totalDiscount)}</span>
                 </div>
-                {discountPercent > 0 && (
-                  <div className="flex justify-between text-sm text-green-600">
-                    <span>Discount ({discountPercent}%)</span>
-                    <span>− {formatCurrency(computed.discountAmount)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-lg font-bold text-primary border-t pt-1.5 mt-1">
-                  <span>Net Total</span>
-                  <span>{formatCurrency(computed.total)}</span>
-                </div>
+              )}
+              <div className="flex justify-between text-lg font-bold text-primary border-t pt-2 mt-1">
+                <span>Net Total</span>
+                <span>{formatCurrency(computed.total)}</span>
               </div>
             </div>
           )}
