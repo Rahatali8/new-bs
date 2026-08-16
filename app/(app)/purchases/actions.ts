@@ -11,6 +11,7 @@ export async function createPurchase(payload: {
   partyId: string
   items: PurchaseItemInput[]
   taxRate?: number
+  discountRate?: number
   status?: string
 }) {
   const currentUser = await getSessionOrRedirect()
@@ -44,10 +45,11 @@ export async function createPurchase(payload: {
     return { error: "One or more items not found" }
   }
 
-  const taxRate = payload.taxRate ?? 18
+  const discountRate = payload.discountRate ?? 0
   const subtotal = payload.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
-  const tax = subtotal * (taxRate / 100)
-  const total = subtotal + tax
+  const discountAmount = subtotal * (discountRate / 100)
+  const total = subtotal - discountAmount
+  const tax = 0
 
   const { data: purchase, error: purchaseError } = await supabase
     .from("purchase_invoices")
@@ -206,7 +208,7 @@ export async function getPurchaseForPDF(purchaseId: string) {
 
 export async function updatePurchase(
   purchaseId: string,
-  payload: { partyId: string; items: PurchaseItemInput[]; status?: string; taxRate?: number },
+  payload: { partyId: string; items: PurchaseItemInput[]; status?: string; taxRate?: number; discountRate?: number },
 ) {
   const currentUser = await getSessionOrRedirect()
   const supabase = createClient()
@@ -304,10 +306,11 @@ export async function updatePurchase(
     }
   }
 
-  const taxRate = payload.taxRate ?? 18
+  const discountRate = payload.discountRate ?? 0
   const subtotal = payload.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
-  const tax = subtotal * (taxRate / 100)
-  const total = subtotal + tax
+  const discountAmount = subtotal * (discountRate / 100)
+  const total = subtotal - discountAmount
+  const tax = 0
 
   // Update purchase header (verify ownership)
   const { error: purchaseError } = await supabase

@@ -53,6 +53,7 @@ export function PurchaseForm({
     return []
   })
   const [status, setStatus] = useState(initialStatus || "Draft")
+  const [discountPercent, setDiscountPercent] = useState(0)
   const [selectedItem, setSelectedItem] = useState("")
   const [quantity, setQuantity] = useState(1)
   const [unitPrice, setUnitPrice] = useState(0)
@@ -185,8 +186,10 @@ export function PurchaseForm({
       }
     })
     const subtotal = detailed.reduce((sum, line) => sum + line.amount, 0)
-    return { detailed, subtotal, total: subtotal }
-  }, [localInventory, items])
+    const discountAmount = subtotal * (discountPercent / 100)
+    const total = subtotal - discountAmount
+    return { detailed, subtotal, discountAmount, total }
+  }, [localInventory, items, discountPercent])
 
   const handleCreateNewVendor = async () => {
     if (!newVendorName.trim() || !newVendorPhone.trim()) {
@@ -246,8 +249,8 @@ export function PurchaseForm({
       }))
 
       const result = isEdit
-        ? await updatePurchase(purchaseId, { partyId, items: payload, status, taxRate: 0 })
-        : await createPurchase({ partyId, items: payload, taxRate: 0, status })
+        ? await updatePurchase(purchaseId, { partyId, items: payload, status, discountRate: discountPercent })
+        : await createPurchase({ partyId, items: payload, discountRate: discountPercent, status })
 
       if (result?.error) {
         setMessage({ error: result.error })
@@ -438,10 +441,38 @@ export function PurchaseForm({
           </div>
 
           {computed.detailed.length > 0 && (
-            <div className="bg-secondary rounded-lg p-4 space-y-2 max-w-sm ml-auto">
-              <div className="flex justify-between text-lg font-bold text-primary">
-                <span>Total</span>
-                <span>{formatCurrency(computed.total)}</span>
+            <div className="bg-secondary rounded-lg p-4 space-y-3 max-w-sm ml-auto">
+              {/* Discount % input */}
+              <div className="flex items-center gap-3">
+                <label className="text-sm text-muted-foreground whitespace-nowrap">Vendor Discount (%)</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={0.1}
+                  value={discountPercent || ""}
+                  onChange={(e) => setDiscountPercent(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+                  placeholder="0"
+                  className="w-24 h-8 px-2 text-sm rounded border border-input bg-background text-right focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+
+              {/* Summary breakdown */}
+              <div className="space-y-1.5 border-t pt-2">
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Subtotal</span>
+                  <span>{formatCurrency(computed.subtotal)}</span>
+                </div>
+                {discountPercent > 0 && (
+                  <div className="flex justify-between text-sm text-green-600">
+                    <span>Discount ({discountPercent}%)</span>
+                    <span>− {formatCurrency(computed.discountAmount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-lg font-bold text-primary border-t pt-1.5 mt-1">
+                  <span>Net Total</span>
+                  <span>{formatCurrency(computed.total)}</span>
+                </div>
               </div>
             </div>
           )}
