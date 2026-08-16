@@ -56,8 +56,8 @@ export function PurchaseForm({
   const [status, setStatus] = useState(initialStatus || "Draft")
   const [itemDiscount, setItemDiscount] = useState(0)
   const [selectedItem, setSelectedItem] = useState("")
-  const [quantity, setQuantity] = useState(1)
-  const [unitPrice, setUnitPrice] = useState(0)
+  const [quantity, setQuantity] = useState<number | "">("")
+  const [unitPrice, setUnitPrice] = useState<number | "">("")
 
   // Vendor search state
   const [vendorSearch, setVendorSearch] = useState("")
@@ -129,7 +129,7 @@ export function PurchaseForm({
   useEffect(() => {
     if (selectedItem) {
       const invItem = localInventory.find((i) => i.id === selectedItem)
-      if (invItem) setUnitPrice(invItem.unitPrice)
+      if (invItem && invItem.unitPrice > 0) setUnitPrice(invItem.unitPrice)
     }
   }, [selectedItem, localInventory])
 
@@ -140,7 +140,9 @@ export function PurchaseForm({
     i.name.toLowerCase().includes(itemSearch.toLowerCase())
   )
   const addLine = () => {
-    if (!selectedItem || quantity <= 0 || unitPrice <= 0) {
+    const qty = Number(quantity) || 0
+    const price = Number(unitPrice) || 0
+    if (!selectedItem || qty <= 0 || price <= 0) {
       toast.error("Please select an item and enter valid quantity and cost price")
       return
     }
@@ -151,24 +153,23 @@ export function PurchaseForm({
       return
     }
 
-    // Check if item already exists in the line items
     const existingItemIndex = items.findIndex((item) => item.itemId === selectedItem)
-    const totalQuantity = existingItemIndex >= 0 ? items[existingItemIndex].quantity + quantity : quantity
+    const totalQuantity = existingItemIndex >= 0 ? items[existingItemIndex].quantity + qty : qty
 
     if (existingItemIndex >= 0) {
       setItems((prev) =>
         prev.map((item, idx) =>
-          idx === existingItemIndex ? { ...item, quantity: totalQuantity, unitPrice, discountPct: itemDiscount } : item,
+          idx === existingItemIndex ? { ...item, quantity: totalQuantity, unitPrice: price, discountPct: itemDiscount } : item,
         ),
       )
     } else {
-      setItems((prev) => [...prev, { itemId: selectedItem, quantity, unitPrice, discountPct: itemDiscount }])
+      setItems((prev) => [...prev, { itemId: selectedItem, quantity: qty, unitPrice: price, discountPct: itemDiscount }])
     }
 
     setSelectedItem("")
     setItemSearch("")
-    setQuantity(1)
-    setUnitPrice(0)
+    setQuantity("")
+    setUnitPrice("")
     setItemDiscount(0)
     toast.success("Item added to purchase")
   }
@@ -394,8 +395,9 @@ export function PurchaseForm({
                   id="qty"
                   type="number"
                   min={1}
+                  placeholder="e.g. 24"
                   value={quantity}
-                  onChange={(e) => setQuantity(Number(e.target.value) || 1)}
+                  onChange={(e) => setQuantity(e.target.value === "" ? "" : Number(e.target.value))}
                 />
               </div>
               <div className="space-y-2">
@@ -405,8 +407,9 @@ export function PurchaseForm({
                   type="number"
                   min="0"
                   step="0.01"
+                  placeholder="e.g. 350"
                   value={unitPrice}
-                  onChange={(e) => setUnitPrice(Number(e.target.value) || 0)}
+                  onChange={(e) => setUnitPrice(e.target.value === "" ? "" : Number(e.target.value))}
                 />
               </div>
               <div className="space-y-2">
@@ -423,7 +426,7 @@ export function PurchaseForm({
                 />
               </div>
               <div className="flex items-end">
-                <Button type="button" className="w-full" onClick={addLine} disabled={!selectedItem || unitPrice <= 0}>
+                <Button type="button" className="w-full" onClick={addLine} disabled={!selectedItem || !quantity || !unitPrice}>
                   <Plus className="w-4 h-4 mr-2" />
                   Add item
                 </Button>
